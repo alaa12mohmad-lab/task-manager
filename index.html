@@ -339,6 +339,81 @@ body{font-family:'Cairo',sans-serif;background:var(--bg);color:var(--text);displ
 
 ::-webkit-scrollbar{width:5px;}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;}
+/* ── MOBILE RESPONSIVE ── */
+.hamburger{display:none;width:38px;height:38px;border-radius:9px;border:1px solid var(--border);background:var(--s2);color:var(--muted);cursor:pointer;align-items:center;justify-content:center;font-size:1.1rem;transition:all .2s;flex-shrink:0;}
+.hamburger:hover{color:var(--text);border-color:var(--border2);}
+.sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:299;backdrop-filter:blur(3px);}
+.bottom-nav{display:none;position:fixed;bottom:0;left:0;right:0;background:var(--s1);border-top:1px solid var(--border);z-index:200;padding:6px 0 max(6px, env(safe-area-inset-bottom));justify-content:space-around;}
+.bnav-item{display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 12px;cursor:pointer;color:var(--muted);font-size:.6rem;font-weight:700;border-radius:10px;transition:all .2s;position:relative;}
+.bnav-item:hover,.bnav-item.active{color:var(--accent);}
+.bnav-item .bnav-icon{font-size:1.2rem;}
+.bnav-badge{position:absolute;top:2px;right:6px;min-width:16px;height:16px;border-radius:8px;background:var(--cancel);color:#fff;font-size:.55rem;font-weight:900;display:none;align-items:center;justify-content:center;padding:0 3px;border:2px solid var(--s1);}
+.bnav-badge.show{display:flex;}
+
+/* ── COMMENTS ── */
+.comments-section{margin-top:20px;border-top:1px solid var(--border);padding-top:16px;}
+.comments-title{font-size:.85rem;font-weight:900;margin-bottom:12px;display:flex;align-items:center;gap:7px;}
+.comment-list{display:flex;flex-direction:column;gap:10px;max-height:280px;overflow-y:auto;margin-bottom:14px;scrollbar-width:thin;}
+.comment-item{display:flex;gap:10px;}
+.comment-av{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;flex-shrink:0;color:#fff;}
+.comment-bubble{background:var(--s2);border:1px solid var(--border);border-radius:12px 0 12px 12px;padding:10px 12px;flex:1;min-width:0;}
+.comment-meta{display:flex;align-items:center;gap:8px;margin-bottom:5px;}
+.comment-author{font-size:.75rem;font-weight:700;}
+.comment-time{font-size:.65rem;color:var(--muted);}
+.comment-text{font-size:.82rem;line-height:1.5;white-space:pre-wrap;word-break:break-word;}
+.comment-mine .comment-bubble{background:rgba(79,142,247,.12);border-color:rgba(79,142,247,.25);border-radius:0 12px 12px 12px;}
+.comment-input-row{display:flex;gap:8px;align-items:flex-end;}
+.comment-input-row .fta{min-height:44px;max-height:100px;resize:none;flex:1;font-size:.85rem;}
+.comment-send-btn{width:40px;height:40px;border-radius:10px;border:none;background:var(--accent);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:1rem;transition:all .2s;flex-shrink:0;}
+.comment-send-btn:hover{background:var(--purple);}
+.comment-send-btn:disabled{opacity:.5;cursor:not-allowed;}
+.comment-empty{text-align:center;padding:20px;color:var(--muted);font-size:.8rem;}
+
+@media(max-width:768px){
+  html,body{overflow:auto;}
+  body{flex-direction:column;}
+  .sidebar{position:fixed;top:0;right:0;height:100%;z-index:300;transform:translateX(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);box-shadow:none;}
+  .sidebar.open{transform:translateX(0);box-shadow:-10px 0 40px rgba(0,0,0,.5);}
+  .sidebar-overlay.open{display:block;}
+  .main{height:100dvh;padding-bottom:65px;}
+  .hamburger{display:flex;}
+  .bottom-nav{display:flex;}
+  .topbar{padding:10px 14px;gap:8px;}
+  .topbar-title{font-size:1.05rem;}
+  .topbar-actions .search-wrap{display:none;}
+  .topbar-actions .btn-ghost:not(.show-mobile){display:none;}
+  .topbar-actions .btn-primary{padding:7px 12px;font-size:.8rem;}
+  .content{padding:14px 14px 20px;}
+  .dash-grid{grid-template-columns:repeat(2,1fr);gap:10px;}
+  .dash-card{padding:13px;}
+  .dash-card-icon{width:38px;height:38px;font-size:1rem;}
+  .dash-card-num{font-size:1.4rem;}
+  .dash-row{grid-template-columns:1fr;gap:10px;}
+  .frow,.frow3{grid-template-columns:1fr;}
+  .ws-grid{grid-template-columns:1fr;}
+  .emp-grid{grid-template-columns:1fr;}
+  .filter-bar{gap:6px;}
+  .filter-right{margin-right:0;width:100%;}
+  .task-actions{opacity:1;}
+  .overlay{align-items:flex-end;padding:0;}
+  .modal{width:100%;max-width:100%;border-radius:20px 20px 0 0;max-height:92dvh;padding:20px 16px 24px;}
+  .modal-title{font-size:1rem;}
+  .ws-detail-header{flex-wrap:wrap;gap:8px;}
+  .ws-tabs{width:100%;}
+  .ws-tab{flex:1;text-align:center;}
+  .cal-cell{min-height:60px;}
+  .cal-dot{display:none;}
+  .cal-num{font-size:.7rem;}
+  .notif-panel{left:8px;right:8px;width:auto;top:auto;bottom:70px;}
+  .member-row{flex-wrap:wrap;gap:8px;}
+  .member-actions{width:100%;justify-content:flex-end;}
+  .ws-card-stats{flex-direction:column;}
+  .leader-item{gap:8px;}
+}
+@media(max-width:400px){
+  .dash-grid{grid-template-columns:1fr;}
+  .emp-stats{grid-template-columns:1fr 1fr;}
+}
 
 /* ── NOTIFICATIONS ── */
 .notif-btn{position:relative;width:38px;height:38px;border-radius:9px;border:1px solid var(--border);background:var(--s2);color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:1rem;transition:all .2s;flex-shrink:0;}
@@ -469,6 +544,7 @@ body{font-family:'Cairo',sans-serif;background:var(--bg);color:var(--text);displ
   <div class="topbar">
     <div class="topbar-title" id="page-title">لوحة التحكم</div>
     <div class="topbar-actions">
+      <button class="hamburger" onclick="toggleSidebar()" title="القائمة">☰</button>
       <div class="sync-badge"><div class="sync-dot syncing" id="sync-dot"></div><span id="sync-label">جاري المزامنة</span></div>
       <div style="position:relative;flex-shrink:0">
         <button class="notif-btn" id="notif-btn" onclick="toggleNotifPanel()" title="الإشعارات">🔔
@@ -581,6 +657,27 @@ body{font-family:'Cairo',sans-serif;background:var(--bg);color:var(--text);displ
 
   </div><!-- /content -->
 </div><!-- /main -->
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+<div class="bottom-nav" id="bottom-nav">
+  <div class="bnav-item active" id="bnav-dash" onclick="goPage('dash');closeSidebar()">
+    <div class="bnav-icon">📊</div><span>الرئيسية</span>
+  </div>
+  <div class="bnav-item" id="bnav-tasks" onclick="goPage('tasks');closeSidebar()">
+    <div class="bnav-icon">📋</div><span>المهام</span>
+    <div class="bnav-badge" id="bnav-badge-tasks">0</div>
+  </div>
+  <div class="bnav-item" id="bnav-workspaces" onclick="goPage('workspaces');closeSidebar()">
+    <div class="bnav-icon">🏢</div><span>المساحات</span>
+    <div class="bnav-badge" id="bnav-badge-ws">0</div>
+  </div>
+  <div class="bnav-item" id="bnav-emps" onclick="goPage('emps');closeSidebar()">
+    <div class="bnav-icon">👥</div><span>موظفوي</span>
+  </div>
+  <div class="bnav-item" id="bnav-notif" onclick="toggleNotifPanel()">
+    <div class="bnav-icon">🔔</div><span>إشعارات</span>
+    <div class="bnav-badge" id="bnav-badge-notif">0</div>
+  </div>
+</div>
 </div><!-- /app -->
 
 <!-- ══ TASK MODAL ══ -->
@@ -678,6 +775,25 @@ body{font-family:'Cairo',sans-serif;background:var(--bg);color:var(--text);displ
   </div>
 </div></div>
 
+<!-- ══ COMMENTS MODAL ══ -->
+<div class="overlay" id="comments-overlay" onclick="handleOvClick(event,'comments-overlay')">
+<div class="modal" style="max-width:540px">
+  <div class="modal-title" id="comments-modal-title">💬 التعليقات</div>
+  <div class="comments-section" style="margin-top:0;border-top:none;padding-top:0">
+    <div class="comment-list" id="comment-list">
+      <div class="comment-empty">جاري التحميل...</div>
+    </div>
+    <div class="comment-input-row">
+      <textarea class="fta" id="comment-input" placeholder="اكتب تعليقاً..." rows="2" onkeydown="commentKeydown(event)"></textarea>
+      <button class="comment-send-btn" id="comment-send-btn" onclick="sendComment()">➤</button>
+    </div>
+  </div>
+  <div class="modal-foot">
+    <button class="btn btn-ghost" onclick="closeModal('comments-overlay')">إغلاق</button>
+  </div>
+</div>
+</div>
+
 <div id="notif-panel-wrap" style="display:none;position:fixed;inset:0;z-index:599" onclick="closeNotifPanel()"></div>
 <div id="notif-panel" style="display:none"></div>
 <div class="toast-box" id="toast-box"></div>
@@ -772,8 +888,7 @@ function startPersonalListeners(){
 }
 function checkSeeded(){
   if(tasksReady&&empsReady){
-    if(!seeded&&tasks.length===0&&emps.length===0){seeded=true;seedData();}
-    else{seeded=true;setSyncStatus('synced');hideLoading();renderAll();}
+    seeded=true;setSyncStatus('synced');hideLoading();renderAll();
   }
 }
 
@@ -868,6 +983,22 @@ async function doLogout(){if(!confirm('هل تريد تسجيل الخروج؟')
 
 /* ══ NAVIGATION ══ */
 const pageTitles={dash:'لوحة التحكم',tasks:'مهامي',emps:'موظفوي',cal:'التقويم',workspaces:'المساحات المشتركة','ws-detail':'...'};
+
+// ── Sidebar mobile ──
+function toggleSidebar(){
+  const sb=document.getElementById('app')?.querySelector('.sidebar');
+  const ov=document.getElementById('sidebar-overlay');
+  if(!sb)return;
+  const open=sb.classList.toggle('open');
+  ov.classList.toggle('open',open);
+}
+function closeSidebar(){
+  const sb=document.getElementById('app')?.querySelector('.sidebar');
+  const ov=document.getElementById('sidebar-overlay');
+  if(sb)sb.classList.remove('open');
+  if(ov)ov.classList.remove('open');
+}
+
 function goPage(p){
   currentPage=p;
   document.querySelectorAll('.page').forEach(el=>el.classList.remove('active'));
@@ -875,6 +1006,9 @@ function goPage(p){
   document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));
   document.getElementById('nav-'+p)?.classList.add('active');
   document.getElementById('page-title').textContent=pageTitles[p]||p;
+  // Bottom nav sync
+  document.querySelectorAll('.bnav-item').forEach(el=>el.classList.remove('active'));
+  document.getElementById('bnav-'+p)?.classList.add('active');
   if(p==='tasks'){currentFilter='all';syncPills();renderTasks();}
   if(p==='dash')renderDash();
   if(p==='emps')renderEmps();
@@ -1305,7 +1439,10 @@ function renderWsDetail(){
             ${t.cat?`<span class="task-cat">🏷 ${esc(t.cat)}</span>`:''}
           </div>
         </div>
-        ${canManage?`<div class="task-actions"><button class="icon-btn" onclick="openWsTaskModal('${t.id}')">✏️</button><button class="icon-btn del" onclick="deleteWsTask('${t.id}')">🗑</button></div>`:''}
+        <div class="task-actions">
+          <button class="icon-btn" title="التعليقات" onclick="openComments('${t.id}','${currentWs.id}','${esc(t.title).slice(0,40)}')">💬</button>
+          ${canManage?`<button class="icon-btn" onclick="openWsTaskModal('${t.id}')">✏️</button><button class="icon-btn del" onclick="deleteWsTask('${t.id}')">🗑</button>`:''}
+        </div>
       </div>`;
     }).join('')+'</div>';
   }
@@ -1408,7 +1545,7 @@ function renderTasks(){
   document.getElementById('overdue-banner').innerHTML=oc>0&&currentFilter!=='overdue'?`<div class="overdue-banner">⚠️ <strong>${oc} مهمة متأخرة</strong> تجاوزت تاريخ الاستحقاق <button class="btn btn-danger" style="margin-right:auto;padding:4px 10px;font-size:.75rem" onclick="quickFilter('overdue')">عرضها</button></div>`:'';
   const c=document.getElementById('tasks-container');
   if(!list.length){c.innerHTML=`<div class="empty"><div class="ei">📭</div><p>لا توجد مهام</p><small>أضف مهمة جديدة أو غيّر الفلتر</small></div>`;return;}
-  c.innerHTML=list.map(t=>{const emp=empById(t.empId);const av=emp?`<div style="width:32px;height:32px;border-radius:50%;background:${emp.color};display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;color:#fff;flex-shrink:0;border:2px solid var(--border2)">${initials(emp.name)}</div>`:`<div style="width:32px;height:32px;border-radius:50%;background:var(--s3);display:flex;align-items:center;justify-content:center;font-size:.8rem;color:var(--muted);flex-shrink:0;border:2px solid var(--border)">؟</div>`;const empChip=emp?`<span style="display:flex;align-items:center;gap:4px;font-size:.72rem;color:${emp.color};background:${emp.color}18;border:1px solid ${emp.color}40;border-radius:20px;padding:2px 8px 2px 4px"><span style="background:${emp.color};width:14px;height:14px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:.5rem;font-weight:700;color:#fff">${initials(emp.name)}</span>${esc(emp.name)}</span>`:'';const ck=t.status==='done'?'✓':t.status==='cancelled'?'✕':t.status==='wip'?'►':'';const dc=isOverdue(t)?'task-date overdue':'task-date';const dl=t.due?`${isOverdue(t)?'⚠️ ':'📅 '}${fmtDate(t.due)}`:'';return`<div class="task-card" data-s="${t.status}"><div class="task-check" onclick="toggleStatus('${t.id}')">${ck}</div>${av}<div class="task-body"><div class="task-title">${esc(t.title)}</div>${t.desc?`<div class="task-desc">${esc(t.desc)}</div>`:''}<div class="task-meta"><span class="badge b-${t.status}">${statusLabels[t.status]}</span><span class="badge b-${t.priority}">${priLabels[t.priority]}</span>${empChip}${dl?`<span class="${dc}">${dl}</span>`:''}${t.cat?`<span class="task-cat">🏷 ${esc(t.cat)}</span>`:''}</div></div><div class="task-actions"><button class="icon-btn" onclick="openTaskDetail('${t.id}')">👁</button><button class="icon-btn" onclick="openTaskModal('${t.id}')">✏️</button><button class="icon-btn del" onclick="deleteTask('${t.id}')">🗑</button></div></div>`;}).join('');
+  c.innerHTML=list.map(t=>{const emp=empById(t.empId);const av=emp?`<div style="width:32px;height:32px;border-radius:50%;background:${emp.color};display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;color:#fff;flex-shrink:0;border:2px solid var(--border2)">${initials(emp.name)}</div>`:`<div style="width:32px;height:32px;border-radius:50%;background:var(--s3);display:flex;align-items:center;justify-content:center;font-size:.8rem;color:var(--muted);flex-shrink:0;border:2px solid var(--border)">؟</div>`;const empChip=emp?`<span style="display:flex;align-items:center;gap:4px;font-size:.72rem;color:${emp.color};background:${emp.color}18;border:1px solid ${emp.color}40;border-radius:20px;padding:2px 8px 2px 4px"><span style="background:${emp.color};width:14px;height:14px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:.5rem;font-weight:700;color:#fff">${initials(emp.name)}</span>${esc(emp.name)}</span>`:'';const ck=t.status==='done'?'✓':t.status==='cancelled'?'✕':t.status==='wip'?'►':'';const dc=isOverdue(t)?'task-date overdue':'task-date';const dl=t.due?`${isOverdue(t)?'⚠️ ':'📅 '}${fmtDate(t.due)}`:'';return`<div class="task-card" data-s="${t.status}"><div class="task-check" onclick="toggleStatus('${t.id}')">${ck}</div>${av}<div class="task-body"><div class="task-title">${esc(t.title)}</div>${t.desc?`<div class="task-desc">${esc(t.desc)}</div>`:''}<div class="task-meta"><span class="badge b-${t.status}">${statusLabels[t.status]}</span><span class="badge b-${t.priority}">${priLabels[t.priority]}</span>${empChip}${dl?`<span class="${dc}">${dl}</span>`:''}${t.cat?`<span class="task-cat">🏷 ${esc(t.cat)}</span>`:''}</div></div><div class="task-actions"><button class="icon-btn" title="التعليقات" onclick="openComments('${t.id}',null,'${esc(t.title).slice(0,40)}')">💬</button><button class="icon-btn" onclick="openTaskDetail('${t.id}')">👁</button><button class="icon-btn" onclick="openTaskModal('${t.id}')">✏️</button><button class="icon-btn del" onclick="deleteTask('${t.id}')">🗑</button></div></div>`;}).join('');
 }
 
 /* ══ RENDER EMPLOYEES ══ */
@@ -1451,6 +1588,8 @@ function renderCounts(){
   const cnt={all:tasks.length,pending:0,wip:0,done:0,cancelled:0,overdue:0};tasks.forEach(t=>{cnt[t.status]++;if(isOverdue(t))cnt.overdue++;});
   ['all','pending','wip','done','overdue'].forEach(k=>{const el=document.getElementById('nb-'+k);if(el)el.textContent=cnt[k];});
   document.getElementById('nb-emps').textContent=emps.length;
+  // Bottom nav
+  const bt=document.getElementById('bnav-badge-tasks');if(bt){if(cnt.all>0){bt.textContent=cnt.all;bt.classList.add('show');}else bt.classList.remove('show');}
   const sel=document.getElementById('filter-emp');const cur=sel.value;
   sel.innerHTML=`<option value="">كل الموظفين</option>`+emps.map(e=>`<option value="${e.id}" ${cur===e.id?'selected':''}>${esc(e.name)}</option>`).join('');
 }
@@ -1478,15 +1617,16 @@ function updateNotifBadge(){
   const unread=notifications.filter(n=>!n.read).length;
   const btn=document.getElementById('notif-btn');
   const cnt=document.getElementById('notif-count');
-  if(!btn||!cnt)return;
-  if(unread>0){
-    cnt.textContent=unread>99?'99+':unread;
-    cnt.style.display='flex';
-    btn.classList.add('has-new');
-  }else{
-    cnt.style.display='none';
-    btn.classList.remove('has-new');
+  if(btn&&cnt){
+    if(unread>0){cnt.textContent=unread>99?'99+':unread;cnt.style.display='flex';btn.classList.add('has-new');}
+    else{cnt.style.display='none';btn.classList.remove('has-new');}
   }
+  // Bottom nav badge
+  const bb=document.getElementById('bnav-badge-notif');
+  if(bb){if(unread>0){bb.textContent=unread>99?'99+':unread;bb.classList.add('show');}else{bb.classList.remove('show');}}
+  // WS badge
+  const wb=document.getElementById('bnav-badge-ws');
+  if(wb){const n=pendingInvites.length;if(n>0){wb.textContent=n;wb.classList.add('show');}else wb.classList.remove('show');}
 }
 
 function toggleNotifPanel(){
@@ -1594,15 +1734,86 @@ document.addEventListener('keydown',e=>{
   if((e.ctrlKey||e.metaKey)&&e.key==='n'){e.preventDefault();if(currentPage==='ws-detail'&&canManageWs())openWsTaskModal();else openTaskModal();}
 });
 
-/* ══ SEED DATA ══ */
-async function seedData(){
-  setLoadText('جاري إعداد البيانات الأولية...');
-  const se=[{id:'e1',name:'أحمد محمد',role:'مطور برمجيات',dept:'تقنية المعلومات',email:'ahmed@co.com',color:'#4f8ef7'},{id:'e2',name:'سارة أحمد',role:'مصمم جرافيك',dept:'التسويق',email:'sara@co.com',color:'#fd79a8'},{id:'e3',name:'محمد علي',role:'محاسب قانوني',dept:'المالية',email:'mali@co.com',color:'#00c896'},{id:'e4',name:'نورة خالد',role:'مدير مشاريع',dept:'الإدارة',email:'noura@co.com',color:'#a29bfe'},{id:'e5',name:'خالد عمر',role:'محلل بيانات',dept:'تقنية المعلومات',email:'khaled@co.com',color:'#f7a23e'}];
-  const d=n=>new Date(Date.now()+n*86400000).toISOString().slice(0,10);
-  const st=[{title:'تطوير لوحة التحكم',desc:'إضافة مكونات التحليلات',empId:'e1',cat:'تقني',status:'wip',priority:'high',due:d(3),notes:'',created:Date.now()-10e6},{title:'تصميم هوية الشركة',desc:'شعار وألوان وخطوط',empId:'e2',cat:'تسويق',status:'wip',priority:'high',due:d(5),notes:'',created:Date.now()-9e6},{title:'مراجعة التقارير المالية',desc:'',empId:'e3',cat:'مالية',status:'done',priority:'medium',due:d(-2),notes:'',created:Date.now()-8e6},{title:'تحديث خطة المشروع السنوية',desc:'',empId:'e4',cat:'إدارة',status:'pending',priority:'medium',due:d(7),notes:'',created:Date.now()-7e6},{title:'تحليل بيانات المبيعات',desc:'استخراج التقارير',empId:'e5',cat:'تحليل',status:'wip',priority:'high',due:d(2),notes:'',created:Date.now()-6e6}];
-  try{const b=db.batch();se.forEach(e=>b.set(col('employees').doc(e.id),e));st.forEach(t=>{const id=uid();b.set(col('tasks').doc(id),{...t,id});});await b.commit();toast('مرحباً! تم إعداد البيانات الأولية ✓','ok');}catch(e){console.error(e);}
-  hideLoading();
+/* ══ COMMENTS SYSTEM ══ */
+let commentsTaskId=null,commentsWsId=null,unsubComments=null,commentsList=[];
+
+function openComments(taskId,wsId=null,taskTitle=''){
+  commentsTaskId=taskId;commentsWsId=wsId;commentsList=[];
+  document.getElementById('comments-modal-title').innerHTML=`💬 التعليقات — <span style="font-size:.85rem;color:var(--muted);font-weight:600">${esc(taskTitle)}</span>`;
+  document.getElementById('comment-input').value='';
+  document.getElementById('comment-list').innerHTML='<div class="comment-empty">جاري التحميل...</div>';
+  if(unsubComments){unsubComments();unsubComments=null;}
+  const colRef=wsId
+    ?db.collection('workspaces').doc(wsId).collection('tasks').doc(taskId).collection('comments')
+    :col('tasks').doc(taskId).collection('comments');
+  unsubComments=colRef.orderBy('createdAt','asc').onSnapshot(snap=>{
+    commentsList=snap.docs.map(d=>({...d.data(),id:d.id}));
+    renderComments();
+  },()=>{document.getElementById('comment-list').innerHTML='<div class="comment-empty">خطأ في التحميل</div>';});
+  openModal('comments-overlay');
+  setTimeout(()=>document.getElementById('comment-input').focus(),300);
 }
+
+function renderComments(){
+  const list=document.getElementById('comment-list');
+  if(!commentsList.length){list.innerHTML='<div class="comment-empty">لا توجد تعليقات — كن أول من يعلّق! 💬</div>';return;}
+  const palette=['#4f8ef7','#7c5ce4','#00c896','#f7a23e','#ff5c7a','#fd79a8','#a29bfe','#38d9a9'];
+  const colorMap={};let ci=0;
+  commentsList.forEach(c=>{
+    if(!colorMap[c.authorUid]){const m=wsMembers.find(x=>x.uid===c.authorUid);colorMap[c.authorUid]=m?.color||palette[ci++%palette.length];}
+  });
+  list.innerHTML=commentsList.map(c=>{
+    const isMe=c.authorUid===currentUser.uid;
+    const color=colorMap[c.authorUid];
+    return`<div class="comment-item ${isMe?'comment-mine':''}">
+      ${isMe?'':`<div class="comment-av" style="background:${color}">${initials(c.authorName)}</div>`}
+      <div class="comment-bubble">
+        <div class="comment-meta">
+          <span class="comment-author" style="color:${color}">${esc(isMe?'أنت':c.authorName)}</span>
+          <span class="comment-time">${timeAgo(c.createdAt)}</span>
+        </div>
+        <div class="comment-text">${esc(c.text)}</div>
+      </div>
+      ${isMe?`<div class="comment-av" style="background:${color}">${initials(c.authorName)}</div>`:''}
+    </div>`;
+  }).join('');
+  list.scrollTop=list.scrollHeight;
+}
+
+async function sendComment(){
+  const input=document.getElementById('comment-input');
+  const text=input.value.trim();
+  if(!text)return;
+  const btn=document.getElementById('comment-send-btn');
+  btn.disabled=true;
+  try{
+    const colRef=commentsWsId
+      ?db.collection('workspaces').doc(commentsWsId).collection('tasks').doc(commentsTaskId).collection('comments')
+      :col('tasks').doc(commentsTaskId).collection('comments');
+    await colRef.doc(uid()).set({id:uid(),text,authorUid:currentUser.uid,authorName:currentUser.displayName||currentUser.email,authorEmail:currentUser.email,createdAt:Date.now()});
+    input.value='';
+    // إشعارات التعليق للمهام المشتركة
+    if(commentsWsId){
+      const task=wsTasks.find(t=>t.id===commentsTaskId);
+      if(task){
+        const snippet=text.slice(0,50)+(text.length>50?'...':'');
+        const notifBody=`"${task.title}" — ${currentUser.displayName||currentUser.email}: ${snippet}`;
+        if(task.assignedToUid&&task.assignedToUid!==currentUser.uid)
+          await createNotif(task.assignedToUid,{type:'task_updated',title:'💬 تعليق جديد على مهمتك',body:notifBody,link:{wsId:commentsWsId,taskId:commentsTaskId}});
+        if(task.createdByUid&&task.createdByUid!==currentUser.uid&&task.createdByUid!==task.assignedToUid)
+          await createNotif(task.createdByUid,{type:'task_updated',title:'💬 تعليق على مهمة',body:notifBody,link:{wsId:commentsWsId,taskId:commentsTaskId}});
+      }
+    }
+  }catch(e){toast('خطأ في إرسال التعليق','err');}
+  finally{btn.disabled=false;}
+}
+
+function commentKeydown(e){if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){e.preventDefault();sendComment();}}
+
+// إغلاق المستمع عند إغلاق modal التعليقات
+const _origClose=closeModal;
+window.closeModal=function(id){if(id==='comments-overlay'&&unsubComments){unsubComments();unsubComments=null;}_origClose(id);};
+
 </script>
 </body>
 </html>
