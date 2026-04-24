@@ -1,0 +1,2187 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskFlow — نظام إدارة المهام</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0b0d12;--s1:#12151e;--s2:#181c28;--s3:#1f2436;
+  --border:#252b3d;--border2:#2e3650;
+  --accent:#4f8ef7;--purple:#7c5ce4;--done:#00c896;
+  --wip:#f7a23e;--cancel:#ff5c7a;--pending:#6cb4ff;
+  --text:#e2e8f8;--muted:#6b7899;--r:12px;
+  --sh:0 8px 40px rgba(0,0,0,.5);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{height:100%;overflow:hidden;}
+body{font-family:'Cairo',sans-serif;background:var(--bg);color:var(--text);display:flex;}
+
+/* ─── LOADING ─── */
+#loading-overlay{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;transition:opacity .4s;}
+#loading-overlay.hidden{opacity:0;pointer-events:none;}
+.ld-logo{font-size:2.8rem;animation:pulse 1.5s ease-in-out infinite;}
+.ld-title{font-size:1.15rem;font-weight:900;}
+.ld-spinner{width:36px;height:36px;border:3px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin .75s linear infinite;}
+.ld-text{font-size:.8rem;color:var(--muted);}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.1)}}
+
+/* ─── AUTH ─── */
+#auth-screen{position:fixed;inset:0;z-index:8000;display:flex;align-items:center;justify-content:center;background:var(--bg);overflow:auto;}
+#auth-screen::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(79,142,247,.12) 0%,transparent 70%),radial-gradient(ellipse 50% 40% at 90% 90%,rgba(124,92,228,.1) 0%,transparent 60%);pointer-events:none;}
+.auth-wrap{width:420px;max-width:95vw;padding:20px;animation:auth-in .4s ease;}
+@keyframes auth-in{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+.auth-brand{text-align:center;margin-bottom:28px;}
+.auth-brand-icon{width:60px;height:60px;border-radius:18px;margin:0 auto 12px;background:linear-gradient(135deg,var(--accent),var(--purple));display:flex;align-items:center;justify-content:center;font-size:1.8rem;box-shadow:0 8px 32px rgba(79,142,247,.35);}
+.auth-brand-name{font-size:1.6rem;font-weight:900;}
+.auth-brand-sub{font-size:.8rem;color:var(--muted);margin-top:3px;}
+.auth-card{background:var(--s1);border:1px solid var(--border2);border-radius:20px;padding:28px;box-shadow:0 20px 60px rgba(0,0,0,.6);}
+.auth-tabs{display:flex;background:var(--s2);border-radius:10px;padding:4px;margin-bottom:24px;gap:4px;}
+.auth-tab{flex:1;padding:8px;border-radius:7px;border:none;cursor:pointer;font-family:'Cairo',sans-serif;font-size:.88rem;font-weight:700;color:var(--muted);background:transparent;transition:all .2s;}
+.auth-tab.active{background:var(--accent);color:#fff;box-shadow:0 2px 10px rgba(79,142,247,.4);}
+.auth-panel{display:none;}
+.auth-panel.active{display:block;animation:fadein .25s ease;}
+@keyframes fadein{from{opacity:0;transform:translateX(-10px)}to{opacity:1;transform:translateX(0)}}
+.auth-fg{margin-bottom:14px;}
+.auth-fg label{display:block;font-size:.75rem;font-weight:700;color:var(--muted);margin-bottom:5px;}
+.auth-input{width:100%;background:var(--s2);border:1px solid var(--border2);border-radius:9px;padding:10px 14px;color:var(--text);font-family:'Cairo',sans-serif;font-size:.9rem;outline:none;transition:border-color .2s;}
+.auth-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(79,142,247,.12);}
+.auth-input::placeholder{color:var(--muted);}
+.pw-wrap{position:relative;}
+.pw-wrap .auth-input{padding-left:40px;}
+.pw-toggle{position:absolute;left:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);font-size:1rem;transition:color .2s;line-height:1;}
+.pw-toggle:hover{color:var(--text);}
+.auth-error,.auth-info{border-radius:8px;padding:9px 12px;font-size:.8rem;margin-bottom:12px;display:none;}
+.auth-error{background:rgba(255,92,122,.1);border:1px solid rgba(255,92,122,.3);color:var(--cancel);}
+.auth-info{background:rgba(0,200,150,.1);border:1px solid rgba(0,200,150,.3);color:var(--done);}
+.auth-error.show,.auth-info.show{display:block;animation:fadein .2s ease;}
+.auth-btn{width:100%;padding:11px;border-radius:10px;border:none;cursor:pointer;font-family:'Cairo',sans-serif;font-size:.95rem;font-weight:700;background:linear-gradient(135deg,var(--accent),var(--purple));color:#fff;box-shadow:0 4px 18px rgba(79,142,247,.35);transition:all .2s;display:flex;align-items:center;justify-content:center;gap:8px;}
+.auth-btn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 6px 24px rgba(79,142,247,.5);}
+.auth-btn:disabled{opacity:.6;cursor:not-allowed;transform:none;}
+.auth-forgot{text-align:center;margin-top:14px;font-size:.78rem;color:var(--muted);cursor:pointer;transition:color .2s;}
+.auth-forgot:hover{color:var(--accent);}
+.auth-forgot span{color:var(--accent);}
+.pw-strength{margin-top:6px;display:flex;gap:4px;}
+.pw-bar{flex:1;height:3px;border-radius:2px;background:var(--border2);transition:background .3s;}
+.pw-bar.weak{background:var(--cancel);}
+.pw-bar.ok{background:var(--wip);}
+.pw-bar.strong{background:var(--done);}
+.pw-hint{font-size:.68rem;color:var(--muted);margin-top:4px;}
+.auth-back{display:inline-flex;align-items:center;gap:6px;font-size:.78rem;color:var(--muted);cursor:pointer;margin-bottom:16px;transition:color .2s;}
+.auth-back:hover{color:var(--text);}
+
+/* ─── SYNC BADGE ─── */
+.sync-badge{display:flex;align-items:center;gap:6px;font-size:.72rem;color:var(--muted);background:var(--s2);border:1px solid var(--border);border-radius:20px;padding:4px 10px;}
+.sync-dot{width:7px;height:7px;border-radius:50%;background:var(--muted);transition:background .4s;}
+.sync-dot.synced{background:var(--done);}
+.sync-dot.syncing{background:var(--wip);animation:blink .8s ease-in-out infinite;}
+.sync-dot.error{background:var(--cancel);}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* ─── SIDEBAR ─── */
+.sidebar{width:250px;min-width:250px;background:var(--s1);border-left:1px solid var(--border);display:flex;flex-direction:column;height:100vh;overflow:hidden;}
+.sidebar-top{padding:20px 16px 16px;border-bottom:1px solid var(--border);}
+.logo{display:flex;align-items:center;gap:10px;margin-bottom:18px;}
+.logo-icon{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--purple));display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0;}
+.logo-text{font-size:1rem;font-weight:900;}
+.logo-sub{font-size:.65rem;color:var(--muted);font-weight:400;}
+.sidebar-user{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--s2);border-radius:var(--r);border:1px solid var(--border);}
+.sidebar-user-av{width:34px;height:34px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:700;flex-shrink:0;}
+.sidebar-user-info{flex:1;min-width:0;}
+.sidebar-user-name{font-size:.82rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.sidebar-user-role{font-size:.65rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.admin-crown{font-size:.7rem;background:linear-gradient(135deg,#f7a23e,#ff5c7a);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-weight:900;}
+.sidebar-nav{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:2px;}
+.sidebar-nav::-webkit-scrollbar{width:0;}
+.nav-section-label{font-size:.65rem;font-weight:700;color:var(--muted);letter-spacing:1px;text-transform:uppercase;padding:10px 8px 6px;}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:9px;cursor:pointer;color:var(--muted);font-size:.88rem;font-weight:600;transition:all .2s;user-select:none;}
+.nav-item:hover{background:var(--s2);color:var(--text);}
+.nav-item.active{background:rgba(79,142,247,.15);color:var(--accent);}
+.nav-icon{font-size:1rem;width:20px;text-align:center;flex-shrink:0;}
+.nav-badge{margin-right:auto;background:var(--s3);border-radius:20px;padding:1px 7px;font-size:.7rem;color:var(--muted);}
+.nav-item.active .nav-badge{background:rgba(79,142,247,.2);color:var(--accent);}
+.nav-badge.alert{background:rgba(255,92,122,.2)!important;color:var(--cancel)!important;}
+.nav-hr{height:1px;background:var(--border);margin:6px 0;}
+.sidebar-bottom{padding:12px 16px;border-top:1px solid var(--border);}
+.logout-btn{display:flex;align-items:center;gap:8px;width:100%;padding:9px 10px;border-radius:9px;border:none;cursor:pointer;background:transparent;color:var(--muted);font-family:'Cairo',sans-serif;font-size:.85rem;font-weight:600;transition:all .2s;}
+.logout-btn:hover{background:rgba(255,92,122,.1);color:var(--cancel);}
+
+/* ─── MAIN ─── */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+.topbar{padding:16px 28px;display:flex;align-items:center;gap:14px;border-bottom:1px solid var(--border);background:var(--s1);flex-shrink:0;}
+.topbar-title{font-size:1.3rem;font-weight:900;flex:1;}
+.topbar-actions{display:flex;gap:10px;align-items:center;}
+.search-wrap{display:flex;align-items:center;gap:8px;background:var(--s2);border:1px solid var(--border);border-radius:9px;padding:7px 13px;transition:border-color .2s;}
+.search-wrap:focus-within{border-color:var(--accent);}
+.search-wrap input{background:none;border:none;outline:none;color:var(--text);font-family:'Cairo',sans-serif;font-size:.84rem;width:190px;}
+.search-wrap input::placeholder{color:var(--muted);}
+.btn{padding:8px 16px;border-radius:9px;border:none;cursor:pointer;font-family:'Cairo',sans-serif;font-size:.86rem;font-weight:700;transition:all .2s;display:inline-flex;align-items:center;gap:6px;}
+.btn-primary{background:var(--accent);color:#fff;box-shadow:0 4px 16px rgba(79,142,247,.3);}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 6px 22px rgba(79,142,247,.45);}
+.btn-ghost{background:var(--s2);color:var(--muted);border:1px solid var(--border);}
+.btn-ghost:hover{color:var(--text);border-color:var(--border2);}
+.btn-danger{background:rgba(255,92,122,.15);color:var(--cancel);border:1px solid rgba(255,92,122,.3);}
+.btn-danger:hover{background:rgba(255,92,122,.25);}
+.btn-success{background:rgba(0,200,150,.15);color:var(--done);border:1px solid rgba(0,200,150,.3);}
+.btn-success:hover{background:rgba(0,200,150,.25);}
+.btn-sm{padding:5px 10px;font-size:.75rem;}
+.content{flex:1;overflow-y:auto;padding:24px 28px 32px;scrollbar-width:thin;scrollbar-color:var(--border) transparent;}
+.content::-webkit-scrollbar{width:5px;}
+.content::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;}
+
+/* ─── PAGES ─── */
+.page{display:none;}
+.page.active{display:block;}
+
+/* ─── DASHBOARD ─── */
+.dash-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px;}
+.dash-card{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:18px;display:flex;align-items:center;gap:14px;transition:all .25s;cursor:pointer;}
+.dash-card:hover{border-color:var(--border2);transform:translateY(-2px);box-shadow:var(--sh);}
+.dash-card-icon{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0;}
+.dash-card-num{font-size:1.8rem;font-weight:900;line-height:1;}
+.dash-card-label{font-size:.74rem;color:var(--muted);margin-top:2px;}
+.dash-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:22px;}
+.dash-panel{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:18px;}
+.dash-panel-title{font-size:.88rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:14px;}
+.prog-item{margin-bottom:12px;}
+.prog-label{display:flex;justify-content:space-between;font-size:.8rem;margin-bottom:5px;}
+.prog-label span:last-child{color:var(--muted);}
+.prog-track{height:6px;background:var(--s3);border-radius:4px;overflow:hidden;}
+.prog-fill{height:100%;border-radius:4px;transition:width .6s ease;}
+.leader-item{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);}
+.leader-item:last-child{border-bottom:none;}
+.leader-rank{font-size:.75rem;font-weight:900;color:var(--muted);width:18px;text-align:center;}
+.leader-av{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:700;flex-shrink:0;}
+.leader-info{flex:1;}
+.leader-name{font-size:.83rem;font-weight:700;}
+.leader-tasks{font-size:.7rem;color:var(--muted);}
+.leader-done{font-size:.78rem;font-weight:700;color:var(--done);}
+
+/* ─── TASKS ─── */
+.filter-bar{display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap;}
+.pills{display:flex;gap:6px;flex-wrap:wrap;}
+.pill{padding:5px 13px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:'Cairo',sans-serif;font-size:.78rem;font-weight:700;cursor:pointer;transition:all .2s;user-select:none;}
+.pill:hover{color:var(--text);border-color:var(--border2);}
+.pill.active{border-color:var(--accent);background:rgba(79,142,247,.12);color:var(--accent);}
+.pill.p-wip.active{border-color:var(--wip);background:rgba(247,162,62,.12);color:var(--wip);}
+.pill.p-done.active{border-color:var(--done);background:rgba(0,200,150,.12);color:var(--done);}
+.pill.p-cancel.active{border-color:var(--cancel);background:rgba(255,92,122,.12);color:var(--cancel);}
+.pill.p-pending.active{border-color:var(--pending);background:rgba(108,180,255,.12);color:var(--pending);}
+.filter-right{display:flex;gap:8px;margin-right:auto;}
+.fselect{background:var(--s2);border:1px solid var(--border);color:var(--muted);font-family:'Cairo',sans-serif;font-size:.78rem;padding:5px 12px;border-radius:20px;outline:none;cursor:pointer;}
+.fselect:focus{border-color:var(--accent);}
+.tasks-list{display:flex;flex-direction:column;gap:8px;}
+.task-card{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;display:flex;align-items:center;gap:14px;transition:all .25s;position:relative;overflow:hidden;}
+.task-card::after{content:'';position:absolute;right:0;top:0;bottom:0;width:3px;}
+.task-card[data-s="pending"]::after{background:var(--pending);}
+.task-card[data-s="wip"]::after{background:var(--wip);}
+.task-card[data-s="done"]::after{background:var(--done);}
+.task-card[data-s="cancelled"]::after{background:var(--cancel);}
+.task-card:hover{border-color:var(--border2);box-shadow:var(--sh);transform:translateY(-1px);}
+.task-check{width:22px;height:22px;border-radius:7px;border:2px solid var(--border2);cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:.7rem;transition:all .2s;color:#fff;user-select:none;}
+.task-card[data-s="done"] .task-check{background:var(--done);border-color:var(--done);}
+.task-card[data-s="cancelled"] .task-check{background:var(--cancel);border-color:var(--cancel);}
+.task-card[data-s="wip"] .task-check{border-color:var(--wip);color:var(--wip);}
+.task-body{flex:1;min-width:0;}
+.task-title{font-size:.93rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.task-card[data-s="done"] .task-title,.task-card[data-s="cancelled"] .task-title{text-decoration:line-through;opacity:.45;}
+.task-desc{font-size:.75rem;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:500px;}
+.task-meta{display:flex;align-items:center;gap:8px;margin-top:5px;flex-wrap:wrap;}
+.badge{font-size:.68rem;font-weight:700;padding:2px 8px;border-radius:20px;}
+.b-pending{background:rgba(108,180,255,.15);color:var(--pending);}
+.b-wip{background:rgba(247,162,62,.15);color:var(--wip);}
+.b-done{background:rgba(0,200,150,.15);color:var(--done);}
+.b-cancelled{background:rgba(255,92,122,.15);color:var(--cancel);}
+.b-high{background:rgba(255,92,122,.15);color:var(--cancel);}
+.b-medium{background:rgba(247,162,62,.15);color:var(--wip);}
+.b-low{background:rgba(0,200,150,.15);color:var(--done);}
+.task-date{font-size:.72rem;color:var(--muted);}
+.task-date.overdue{color:var(--cancel);font-weight:700;}
+.task-cat{font-size:.7rem;color:var(--muted);}
+.task-actions{display:flex;gap:5px;opacity:0;transition:opacity .2s;}
+.task-card:hover .task-actions{opacity:1;}
+.icon-btn{width:30px;height:30px;border-radius:7px;border:1px solid var(--border);background:var(--s2);color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:.82rem;transition:all .2s;}
+.icon-btn:hover{color:var(--accent);border-color:var(--accent);}
+.icon-btn.del:hover{color:var(--cancel);border-color:var(--cancel);}
+
+/* ─── EMPLOYEES ─── */
+.emp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;}
+.emp-card{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:20px;transition:all .25s;}
+.emp-card:hover{border-color:var(--border2);box-shadow:var(--sh);transform:translateY(-2px);}
+.emp-card-top{display:flex;align-items:center;gap:12px;margin-bottom:14px;}
+.emp-av-lg{width:48px;height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;font-weight:700;flex-shrink:0;}
+.emp-name{font-size:.98rem;font-weight:700;}
+.emp-role{font-size:.75rem;color:var(--muted);}
+.emp-dept{font-size:.7rem;margin-top:2px;}
+.emp-dept span{background:var(--s3);border:1px solid var(--border);border-radius:20px;padding:1px 8px;}
+.emp-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px;}
+.emp-stat{background:var(--s2);border-radius:8px;padding:8px;text-align:center;}
+.emp-stat-num{font-size:1.1rem;font-weight:900;}
+.emp-stat-lbl{font-size:.62rem;color:var(--muted);}
+.emp-actions{display:flex;gap:6px;margin-top:14px;}
+
+/* ─── CALENDAR ─── */
+.cal-header{display:flex;align-items:center;justify-content:space-between;background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:14px 18px;margin-bottom:14px;}
+.cal-nav{display:flex;align-items:center;gap:10px;}
+.cal-nav-btn{width:32px;height:32px;border-radius:8px;border:1px solid var(--border);background:var(--s2);color:var(--text);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;}
+.cal-nav-btn:hover{border-color:var(--accent);color:var(--accent);}
+.cal-month{font-size:1rem;font-weight:700;}
+.cal-grid{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;}
+.cal-head{display:grid;grid-template-columns:repeat(7,1fr);background:var(--s2);border-bottom:1px solid var(--border);}
+.cal-head-day{text-align:center;padding:9px 4px;font-size:.72rem;font-weight:700;color:var(--muted);}
+.cal-body{display:grid;grid-template-columns:repeat(7,1fr);}
+.cal-cell{min-height:90px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);padding:6px 5px;transition:background .15s;cursor:pointer;}
+.cal-cell:nth-child(7n){border-right:none;}
+.cal-cell:hover{background:var(--s2);}
+.cal-cell.other{opacity:.25;}
+.cal-cell.today{background:rgba(79,142,247,.06);}
+.cal-num{font-size:.78rem;font-weight:700;color:var(--muted);margin-bottom:3px;}
+.cal-cell.today .cal-num{color:var(--accent);}
+.cal-dot{font-size:.65rem;padding:1px 4px;border-radius:4px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.cd-pending{background:rgba(108,180,255,.2);color:var(--pending);}
+.cd-wip{background:rgba(247,162,62,.2);color:var(--wip);}
+.cd-done{background:rgba(0,200,150,.2);color:var(--done);}
+.cd-cancelled{background:rgba(255,92,122,.2);color:var(--cancel);}
+
+/* ─── WORKSPACE PAGE ─── */
+.ws-section-title{font-size:.8rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:12px;display:flex;align-items:center;gap:8px;}
+.inv-card{background:var(--s1);border:1px solid rgba(79,142,247,.3);border-radius:var(--r);padding:16px;display:flex;align-items:center;gap:14px;margin-bottom:10px;animation:fadein .3s ease;}
+.inv-avatar{width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,var(--accent),var(--purple));display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0;}
+.inv-info{flex:1;}
+.inv-title{font-size:.9rem;font-weight:700;}
+.inv-sub{font-size:.75rem;color:var(--muted);margin-top:2px;}
+.inv-actions{display:flex;gap:6px;}
+.ws-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;}
+.ws-card{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:20px;cursor:pointer;transition:all .25s;position:relative;overflow:hidden;}
+.ws-card::before{content:'';position:absolute;top:0;right:0;left:0;height:3px;background:linear-gradient(90deg,var(--accent),var(--purple));}
+.ws-card:hover{border-color:var(--border2);box-shadow:var(--sh);transform:translateY(-2px);}
+.ws-card-name{font-size:1rem;font-weight:900;margin-bottom:6px;}
+.ws-card-meta{font-size:.75rem;color:var(--muted);display:flex;gap:12px;margin-bottom:12px;}
+.ws-role-badge{font-size:.65rem;font-weight:700;padding:2px 8px;border-radius:20px;display:inline-flex;align-items:center;gap:4px;}
+.role-owner{background:rgba(247,162,62,.15);color:var(--wip);}
+.role-manager{background:rgba(79,142,247,.15);color:var(--accent);}
+.role-member{background:rgba(107,180,255,.15);color:var(--pending);}
+.ws-card-stats{display:flex;gap:10px;}
+.ws-stat{background:var(--s2);border-radius:8px;padding:8px 12px;text-align:center;flex:1;}
+.ws-stat-num{font-size:1.1rem;font-weight:900;}
+.ws-stat-lbl{font-size:.62rem;color:var(--muted);}
+
+/* ─── WORKSPACE DETAIL ─── */
+.ws-detail-header{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:18px 22px;margin-bottom:18px;display:flex;align-items:center;gap:14px;}
+.ws-detail-icon{width:48px;height:48px;border-radius:14px;background:linear-gradient(135deg,var(--accent),var(--purple));display:flex;align-items:center;justify-content:center;font-size:1.4rem;flex-shrink:0;}
+.ws-detail-info{flex:1;}
+.ws-detail-name{font-size:1.2rem;font-weight:900;}
+.ws-detail-sub{font-size:.76rem;color:var(--muted);margin-top:3px;}
+.ws-tabs{display:flex;gap:4px;background:var(--s2);border-radius:10px;padding:4px;margin-bottom:18px;width:fit-content;}
+.ws-tab{padding:7px 20px;border-radius:7px;border:none;cursor:pointer;font-family:'Cairo',sans-serif;font-size:.85rem;font-weight:700;color:var(--muted);background:transparent;transition:all .2s;}
+.ws-tab.active{background:var(--accent);color:#fff;}
+
+/* Members list in workspace */
+.member-row{display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--s1);border:1px solid var(--border);border-radius:10px;margin-bottom:8px;}
+.member-av{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.85rem;font-weight:700;flex-shrink:0;color:#fff;}
+.member-info{flex:1;}
+.member-name{font-size:.88rem;font-weight:700;}
+.member-email{font-size:.72rem;color:var(--muted);}
+.member-actions{display:flex;gap:6px;align-items:center;}
+
+/* ─── OVERDUE BANNER ─── */
+.overdue-banner{background:rgba(255,92,122,.08);border:1px solid rgba(255,92,122,.25);border-radius:var(--r);padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:10px;font-size:.83rem;}
+.overdue-banner strong{color:var(--cancel);}
+
+/* ─── TASK DETAIL ─── */
+.detail-header{display:flex;align-items:flex-start;gap:14px;margin-bottom:18px;}
+.detail-av{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1rem;font-weight:700;flex-shrink:0;}
+.detail-title{font-size:1.1rem;font-weight:900;line-height:1.3;}
+.detail-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);font-size:.84rem;}
+.detail-row:last-child{border-bottom:none;}
+.detail-key{color:var(--muted);width:110px;flex-shrink:0;font-weight:600;}
+.detail-val{color:var(--text);}
+.status-btns{display:flex;gap:6px;flex-wrap:wrap;margin-top:16px;}
+.status-btn{padding:7px 14px;border-radius:9px;border:1px solid var(--border);background:var(--s2);color:var(--muted);font-family:'Cairo',sans-serif;font-size:.8rem;font-weight:700;cursor:pointer;transition:all .2s;}
+.status-btn.s-wip{border-color:var(--wip);color:var(--wip);background:rgba(247,162,62,.1);}
+.status-btn.s-done{border-color:var(--done);color:var(--done);background:rgba(0,200,150,.1);}
+.status-btn.s-cancel{border-color:var(--cancel);color:var(--cancel);background:rgba(255,92,122,.1);}
+.status-btn.s-pending{border-color:var(--pending);color:var(--pending);background:rgba(108,180,255,.1);}
+
+/* ─── MODAL ─── */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(5px);z-index:200;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .25s;}
+.overlay.open{opacity:1;pointer-events:all;}
+.modal{background:var(--s1);border:1px solid var(--border2);border-radius:18px;padding:26px 26px 22px;width:520px;max-width:96vw;max-height:90vh;overflow-y:auto;box-shadow:var(--sh);transform:scale(.95) translateY(18px);transition:transform .25s;}
+.overlay.open .modal{transform:scale(1) translateY(0);}
+.modal-title{font-size:1.1rem;font-weight:900;margin-bottom:20px;display:flex;align-items:center;gap:10px;}
+.fg{display:flex;flex-direction:column;gap:5px;margin-bottom:14px;}
+.fg label{font-size:.78rem;font-weight:700;color:var(--muted);}
+.fi,.fsel,.fta{background:var(--s2);border:1px solid var(--border);border-radius:9px;padding:9px 13px;color:var(--text);font-family:'Cairo',sans-serif;font-size:.88rem;outline:none;transition:border-color .2s;width:100%;}
+.fi:focus,.fsel:focus,.fta:focus{border-color:var(--accent);}
+.fsel option{background:var(--s2);}
+.fta{resize:vertical;min-height:72px;}
+.frow{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.frow3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;}
+.modal-foot{display:flex;gap:8px;justify-content:flex-end;margin-top:20px;}
+.color-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;}
+.color-opt{width:28px;height:28px;border-radius:50%;cursor:pointer;border:3px solid transparent;transition:all .2s;}
+.color-opt.selected{border-color:#fff;transform:scale(1.15);}
+
+/* ─── TOAST ─── */
+.toast-box{position:fixed;bottom:22px;left:22px;z-index:9999;display:flex;flex-direction:column;gap:7px;}
+.toast{background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:11px 16px;font-size:.83rem;font-weight:600;display:flex;align-items:center;gap:9px;box-shadow:var(--sh);animation:tin .3s ease;min-width:230px;}
+.toast.ok{border-right:3px solid var(--done);}
+.toast.err{border-right:3px solid var(--cancel);}
+.toast.inf{border-right:3px solid var(--accent);}
+@keyframes tin{from{transform:translateX(-24px);opacity:0}to{transform:translateX(0);opacity:1}}
+
+.empty{text-align:center;padding:60px 20px;color:var(--muted);}
+.empty .ei{font-size:2.8rem;margin-bottom:12px;opacity:.35;}
+.empty p{font-size:.95rem;font-weight:600;}
+.empty small{font-size:.78rem;opacity:.6;}
+
+::-webkit-scrollbar{width:5px;}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;}
+/* ── MOBILE RESPONSIVE ── */
+.hamburger{display:none;width:38px;height:38px;border-radius:9px;border:1px solid var(--border);background:var(--s2);color:var(--muted);cursor:pointer;align-items:center;justify-content:center;font-size:1.1rem;transition:all .2s;flex-shrink:0;}
+.hamburger:hover{color:var(--text);border-color:var(--border2);}
+.sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:299;backdrop-filter:blur(3px);}
+.bottom-nav{display:none;position:fixed;bottom:0;left:0;right:0;background:var(--s1);border-top:1px solid var(--border);z-index:200;padding:6px 0 max(6px, env(safe-area-inset-bottom));justify-content:space-around;}
+.bnav-item{display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 12px;cursor:pointer;color:var(--muted);font-size:.6rem;font-weight:700;border-radius:10px;transition:all .2s;position:relative;}
+.bnav-item:hover,.bnav-item.active{color:var(--accent);}
+.bnav-item .bnav-icon{font-size:1.2rem;}
+.bnav-badge{position:absolute;top:2px;right:6px;min-width:16px;height:16px;border-radius:8px;background:var(--cancel);color:#fff;font-size:.55rem;font-weight:900;display:none;align-items:center;justify-content:center;padding:0 3px;border:2px solid var(--s1);}
+.bnav-badge.show{display:flex;}
+
+/* ── COMMENTS ── */
+.comments-section{margin-top:20px;border-top:1px solid var(--border);padding-top:16px;}
+.comments-title{font-size:.85rem;font-weight:900;margin-bottom:12px;display:flex;align-items:center;gap:7px;}
+.comment-list{display:flex;flex-direction:column;gap:10px;max-height:280px;overflow-y:auto;margin-bottom:14px;scrollbar-width:thin;}
+.comment-item{display:flex;gap:10px;}
+.comment-av{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;flex-shrink:0;color:#fff;}
+.comment-bubble{background:var(--s2);border:1px solid var(--border);border-radius:12px 0 12px 12px;padding:10px 12px;flex:1;min-width:0;}
+.comment-meta{display:flex;align-items:center;gap:8px;margin-bottom:5px;}
+.comment-author{font-size:.75rem;font-weight:700;}
+.comment-time{font-size:.65rem;color:var(--muted);}
+.comment-text{font-size:.82rem;line-height:1.5;white-space:pre-wrap;word-break:break-word;}
+.comment-mine .comment-bubble{background:rgba(79,142,247,.12);border-color:rgba(79,142,247,.25);border-radius:0 12px 12px 12px;}
+.comment-input-row{display:flex;gap:8px;align-items:flex-end;}
+.comment-input-row .fta{min-height:44px;max-height:100px;resize:none;flex:1;font-size:.85rem;}
+.comment-send-btn{width:40px;height:40px;border-radius:10px;border:none;background:var(--accent);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:1rem;transition:all .2s;flex-shrink:0;}
+.comment-send-btn:hover{background:var(--purple);}
+.comment-send-btn:disabled{opacity:.5;cursor:not-allowed;}
+.comment-empty{text-align:center;padding:20px;color:var(--muted);font-size:.8rem;}
+
+@media(max-width:768px){
+  html,body{overflow:auto;}
+  body{flex-direction:column;}
+  .sidebar{position:fixed;top:0;right:0;height:100%;z-index:300;transform:translateX(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);box-shadow:none;}
+  .sidebar.open{transform:translateX(0);box-shadow:-10px 0 40px rgba(0,0,0,.5);}
+  .sidebar-overlay.open{display:block;}
+  .main{height:100dvh;padding-bottom:65px;}
+  .hamburger{display:flex;}
+  .bottom-nav{display:flex;}
+  .topbar{padding:10px 14px;gap:8px;}
+  .topbar-title{font-size:1.05rem;}
+  .topbar-actions .search-wrap{display:none;}
+  .topbar-actions .btn-ghost:not(.show-mobile){display:none;}
+  .topbar-actions .btn-primary{padding:7px 12px;font-size:.8rem;}
+  .content{padding:14px 14px 20px;}
+  .dash-grid{grid-template-columns:repeat(2,1fr);gap:10px;}
+  .dash-card{padding:13px;}
+  .dash-card-icon{width:38px;height:38px;font-size:1rem;}
+  .dash-card-num{font-size:1.4rem;}
+  .dash-row{grid-template-columns:1fr;gap:10px;}
+  .frow,.frow3{grid-template-columns:1fr;}
+  .ws-grid{grid-template-columns:1fr;}
+  .emp-grid{grid-template-columns:1fr;}
+  .filter-bar{gap:6px;}
+  .filter-right{margin-right:0;width:100%;}
+  .task-actions{opacity:1;}
+  .overlay{align-items:flex-end;padding:0;}
+  .modal{width:100%;max-width:100%;border-radius:20px 20px 0 0;max-height:92dvh;padding:20px 16px 24px;}
+  .modal-title{font-size:1rem;}
+  .ws-detail-header{flex-wrap:wrap;gap:8px;}
+  .ws-tabs{width:100%;}
+  .ws-tab{flex:1;text-align:center;}
+  .cal-cell{min-height:60px;}
+  .cal-dot{display:none;}
+  .cal-num{font-size:.7rem;}
+  .notif-panel{left:8px;right:8px;width:auto;top:auto;bottom:70px;}
+  .member-row{flex-wrap:wrap;gap:8px;}
+  .member-actions{width:100%;justify-content:flex-end;}
+  .ws-card-stats{flex-direction:column;}
+  .leader-item{gap:8px;}
+}
+
+/* ── ADMIN PANEL ── */
+.admin-panel{display:flex;flex-direction:column;gap:18px;}
+.admin-section{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:20px;}
+.admin-section-title{font-size:.88rem;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:16px;display:flex;align-items:center;gap:8px;}
+.admin-user-row{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);transition:background .15s;}
+.admin-user-row:last-child{border-bottom:none;}
+.admin-user-av{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:.9rem;font-weight:700;flex-shrink:0;color:#fff;position:relative;}
+.presence-dot{position:absolute;bottom:-2px;right:-2px;width:12px;height:12px;border-radius:50%;border:2px solid var(--s1);}
+.presence-dot.online{background:var(--done);}
+.presence-dot.offline{background:var(--muted);}
+.admin-user-info{flex:1;min-width:0;}
+.admin-user-name{font-size:.88rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.admin-user-email{font-size:.7rem;color:var(--muted);}
+.admin-user-meta{font-size:.68rem;color:var(--muted);margin-top:2px;display:flex;gap:8px;flex-wrap:wrap;}
+.admin-user-actions{display:flex;gap:6px;align-items:center;flex-shrink:0;}
+.online-badge{font-size:.65rem;font-weight:700;padding:2px 7px;border-radius:20px;}
+.online-badge.on{background:rgba(0,200,150,.15);color:var(--done);}
+.online-badge.off{background:rgba(107,128,153,.1);color:var(--muted);}
+.session-row{font-size:.74rem;padding:7px 12px;border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:center;}
+.session-row:last-child{border-bottom:none;}
+.session-row .si{font-size:.8rem;}
+
+/* Broadcast notification panel */
+.broadcast-targets{display:flex;flex-wrap:wrap;gap:6px;padding:10px;background:var(--s2);border:1px solid var(--border);border-radius:9px;min-height:44px;margin-bottom:10px;cursor:text;}
+.target-chip{display:flex;align-items:center;gap:5px;padding:3px 8px 3px 5px;border-radius:20px;font-size:.74rem;font-weight:700;color:#fff;}
+.target-chip .tc-remove{cursor:pointer;opacity:.7;font-size:.7rem;margin-right:2px;}
+.target-chip .tc-remove:hover{opacity:1;}
+.broadcast-select{background:transparent;border:none;outline:none;color:var(--text);font-family:'Cairo',sans-serif;font-size:.82rem;min-width:120px;}
+
+/* @Mention dropdown */
+.mention-dropdown{position:absolute;background:var(--s1);border:1px solid var(--border2);border-radius:10px;box-shadow:var(--sh);z-index:500;min-width:220px;overflow:hidden;max-height:200px;overflow-y:auto;}
+.mention-item{display:flex;align-items:center;gap:10px;padding:9px 12px;cursor:pointer;transition:background .15s;font-size:.84rem;}
+.mention-item:hover{background:var(--s2);}
+.mention-av{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.65rem;font-weight:700;flex-shrink:0;color:#fff;}
+.mention-tag{display:inline-flex;align-items:center;gap:3px;background:rgba(79,142,247,.15);color:var(--accent);border-radius:4px;padding:1px 5px;font-size:.78rem;font-weight:700;cursor:pointer;}
+
+/* crown for super admin */
+.crown-badge{font-size:.7rem;background:linear-gradient(135deg,#f7a23e,#ff5c7a);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-weight:900;margin-right:4px;}
+@media(max-width:400px){
+  .dash-grid{grid-template-columns:1fr;}
+  .emp-stats{grid-template-columns:1fr 1fr;}
+}
+
+/* ── NOTIFICATIONS ── */
+.notif-btn{position:relative;width:38px;height:38px;border-radius:9px;border:1px solid var(--border);background:var(--s2);color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:1rem;transition:all .2s;flex-shrink:0;}
+.notif-btn:hover{color:var(--text);border-color:var(--border2);}
+.notif-btn.has-new{border-color:rgba(255,92,122,.45);color:var(--cancel);animation:bell-ring .6s ease;}
+@keyframes bell-ring{0%,100%{transform:rotate(0)}20%{transform:rotate(-15deg)}40%{transform:rotate(15deg)}60%{transform:rotate(-8deg)}80%{transform:rotate(8deg)}}
+.notif-count{position:absolute;top:-6px;left:-6px;min-width:18px;height:18px;border-radius:9px;background:var(--cancel);color:#fff;font-size:.6rem;font-weight:900;display:flex;align-items:center;justify-content:center;padding:0 4px;border:2px solid var(--bg);pointer-events:none;}
+.notif-panel{position:fixed;top:62px;left:70px;width:340px;max-height:500px;background:var(--s1);border:1px solid var(--border2);border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.6);z-index:600;overflow:hidden;display:flex;flex-direction:column;animation:pdrop .2s ease;}
+@keyframes pdrop{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}
+.notif-head{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.notif-head-title{font-size:.9rem;font-weight:900;}
+.notif-mark-all{font-size:.72rem;color:var(--accent);cursor:pointer;font-weight:700;background:none;border:none;font-family:'Cairo',sans-serif;}
+.notif-mark-all:hover{opacity:.7;}
+.notif-body{overflow-y:auto;flex:1;scrollbar-width:thin;scrollbar-color:var(--border) transparent;}
+.notif-item{display:flex;gap:11px;padding:11px 16px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s;position:relative;}
+.notif-item:last-child{border-bottom:none;}
+.notif-item:hover{background:var(--s2);}
+.notif-item.unread{background:rgba(79,142,247,.05);}
+.unread-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);flex-shrink:0;margin-top:5px;}
+.notif-ico{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:.95rem;flex-shrink:0;}
+.notif-content{flex:1;min-width:0;}
+.notif-ntitle{font-size:.8rem;font-weight:700;line-height:1.3;}
+.notif-nbody{font-size:.72rem;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.notif-ntime{font-size:.65rem;color:var(--muted);margin-top:3px;}
+.notif-empty-state{padding:40px 20px;text-align:center;color:var(--muted);}
+.notif-empty-state .nei{font-size:2.2rem;margin-bottom:8px;opacity:.3;}
+.notif-empty-state p{font-size:.82rem;}
+</style>
+</head>
+<body>
+
+<!-- ══ LOADING ══ -->
+<div id="loading-overlay">
+  <div class="ld-logo">⚡</div>
+  <div class="ld-title">TaskFlow</div>
+  <div class="ld-spinner"></div>
+  <div class="ld-text" id="ld-text">جاري التحقق من الجلسة...</div>
+</div>
+
+<!-- ══ AUTH SCREEN ══ -->
+<div id="auth-screen" style="display:none">
+  <div class="auth-wrap">
+    <div class="auth-brand">
+      <div class="auth-brand-icon">⚡</div>
+      <div class="auth-brand-name">TaskFlow</div>
+      <div class="auth-brand-sub">نظام إدارة المهام التعاوني</div>
+    </div>
+    <div class="auth-card" id="auth-main-card">
+      <div class="auth-tabs">
+        <button class="auth-tab active" onclick="switchTab('login')">تسجيل الدخول</button>
+        <button class="auth-tab" onclick="switchTab('register')">حساب جديد</button>
+      </div>
+      <div class="auth-panel active" id="panel-login">
+        <div class="auth-error" id="login-error"></div>
+        <div class="auth-fg"><label>البريد الإلكتروني</label><input class="auth-input" id="login-email" type="email" placeholder="example@email.com"></div>
+        <div class="auth-fg"><label>كلمة المرور</label>
+          <div class="pw-wrap"><input class="auth-input" id="login-pw" type="password" placeholder="••••••••"><button class="pw-toggle" onclick="togglePw('login-pw',this)" tabindex="-1">👁</button></div>
+        </div>
+        <button class="auth-btn" id="login-btn" onclick="doLogin()"><span>🔑</span> دخول</button>
+        <div class="auth-forgot" onclick="showReset()">نسيت كلمة المرور؟ <span>استعادتها</span></div>
+      </div>
+      <div class="auth-panel" id="panel-register">
+        <div class="auth-error" id="reg-error"></div>
+        <div class="auth-fg"><label>الاسم الكامل *</label><input class="auth-input" id="reg-name" type="text" placeholder="أدخل اسمك..."></div>
+        <div class="auth-fg"><label>البريد الإلكتروني *</label><input class="auth-input" id="reg-email" type="email" placeholder="example@email.com"></div>
+        <div class="auth-fg"><label>كلمة المرور *</label>
+          <div class="pw-wrap"><input class="auth-input" id="reg-pw" type="password" placeholder="8 أحرف على الأقل" oninput="checkStrength()"><button class="pw-toggle" onclick="togglePw('reg-pw',this)" tabindex="-1">👁</button></div>
+          <div class="pw-strength"><div class="pw-bar" id="bar1"></div><div class="pw-bar" id="bar2"></div><div class="pw-bar" id="bar3"></div><div class="pw-bar" id="bar4"></div></div>
+          <div class="pw-hint" id="pw-hint">أدخل كلمة مرور</div>
+        </div>
+        <div class="auth-fg"><label>تأكيد كلمة المرور *</label>
+          <div class="pw-wrap"><input class="auth-input" id="reg-pw2" type="password" placeholder="أعد إدخال كلمة المرور"><button class="pw-toggle" onclick="togglePw('reg-pw2',this)" tabindex="-1">👁</button></div>
+        </div>
+        <button class="auth-btn" id="reg-btn" onclick="doRegister()"><span>✨</span> إنشاء حساب</button>
+      </div>
+    </div>
+    <div class="auth-card" id="auth-reset-card" style="display:none">
+      <div class="auth-back" onclick="hideReset()">← العودة لتسجيل الدخول</div>
+      <div style="font-size:1rem;font-weight:700;margin-bottom:6px">🔑 استعادة كلمة المرور</div>
+      <div style="font-size:.8rem;color:var(--muted);margin-bottom:18px">سنرسل لك رابط إعادة التعيين على بريدك</div>
+      <div class="auth-error" id="reset-error"></div>
+      <div class="auth-info" id="reset-info"></div>
+      <div class="auth-fg"><label>البريد الإلكتروني</label><input class="auth-input" id="reset-email" type="email" placeholder="example@email.com"></div>
+      <button class="auth-btn" id="reset-btn" onclick="doReset()"><span>📧</span> إرسال رابط الاستعادة</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MAIN APP ══ -->
+<div id="app" style="display:none;width:100%;height:100%">
+<aside class="sidebar">
+  <div class="sidebar-top">
+    <div class="logo">
+      <div class="logo-icon">⚡</div>
+      <div><div class="logo-text">TaskFlow</div><div class="logo-sub">نظام إدارة المهام</div></div>
+    </div>
+    <div class="sidebar-user">
+      <div class="sidebar-user-av" id="su-av">م</div>
+      <div class="sidebar-user-info">
+        <div class="sidebar-user-name" id="su-name">...</div>
+        <div class="sidebar-user-role" id="su-role">...</div>
+      </div>
+    </div>
+  </div>
+  <div class="sidebar-nav">
+    <div class="nav-section-label">الشخصية</div>
+    <div class="nav-item active" id="nav-dash" onclick="goPage('dash')"><span class="nav-icon">📊</span> لوحة التحكم</div>
+    <div class="nav-item" id="nav-tasks" onclick="goPage('tasks')"><span class="nav-icon">📋</span> مهامي<span class="nav-badge" id="nb-all">0</span></div>
+    <div class="nav-item" id="nav-emps" onclick="goPage('emps')"><span class="nav-icon">👥</span> موظفوي<span class="nav-badge" id="nb-emps">0</span></div>
+    <div class="nav-item" id="nav-cal" onclick="goPage('cal')"><span class="nav-icon">📅</span> التقويم</div>
+    <div class="nav-hr"></div>
+    <div class="nav-section-label">التعاون</div>
+    <div class="nav-item" id="nav-workspaces" onclick="goPage('workspaces')"><span class="nav-icon">🏢</span> المساحات المشتركة<span class="nav-badge" id="nb-ws">0</span></div>
+    <div class="nav-item" id="nav-invites" onclick="goPage('workspaces')" style="display:none"><span class="nav-icon">🔔</span> دعوات معلّقة<span class="nav-badge alert" id="nb-invites">0</span></div>
+    <div class="nav-hr" id="admin-nav-hr" style="display:none"></div>
+    <div class="nav-section-label" id="admin-nav-label" style="display:none">الإدارة العليا</div>
+    <div class="nav-item" id="nav-admin" onclick="goPage('admin')" style="display:none">
+      <span class="nav-icon">👑</span> لوحة المالك
+      <span class="nav-badge" id="nb-online" style="background:rgba(0,200,150,.2);color:var(--done)">0</span>
+    </div>
+    <div class="nav-hr"></div>
+    <div class="nav-section-label">تصفية سريعة</div>
+    <div class="nav-item" onclick="quickFilter('pending')"><span class="nav-icon">🔵</span> معلّقة<span class="nav-badge" id="nb-pending">0</span></div>
+    <div class="nav-item" onclick="quickFilter('wip')"><span class="nav-icon">🟠</span> قيد التنفيذ<span class="nav-badge" id="nb-wip">0</span></div>
+    <div class="nav-item" onclick="quickFilter('done')"><span class="nav-icon">🟢</span> منتهية<span class="nav-badge" id="nb-done">0</span></div>
+    <div class="nav-item" onclick="quickFilter('overdue')"><span class="nav-icon">⚠️</span> متأخرة<span class="nav-badge" id="nb-overdue" style="background:rgba(255,92,122,.2);color:var(--cancel)">0</span></div>
+  </div>
+  <div class="sidebar-bottom">
+    <button class="logout-btn" onclick="doLogout()"><span>🚪</span> تسجيل الخروج</button>
+  </div>
+</aside>
+
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-title" id="page-title">لوحة التحكم</div>
+    <div class="topbar-actions">
+      <button class="hamburger" onclick="toggleSidebar()" title="القائمة">☰</button>
+      <div class="sync-badge"><div class="sync-dot syncing" id="sync-dot"></div><span id="sync-label">جاري المزامنة</span></div>
+      <div style="position:relative;flex-shrink:0">
+        <button class="notif-btn" id="notif-btn" onclick="toggleNotifPanel()" title="الإشعارات">🔔
+          <div class="notif-count" id="notif-count" style="display:none">0</div>
+        </button>
+      </div>
+      <div class="search-wrap"><span style="color:var(--muted);font-size:.9rem">🔍</span><input type="text" id="search-input" placeholder="بحث في المهام..." oninput="renderTasks()"></div>
+      <button class="btn btn-ghost" onclick="openEmpModal()">👤 موظف جديد</button>
+      <button class="btn btn-primary" onclick="openTaskModal()">＋ مهمة جديدة</button>
+    </div>
+  </div>
+  <div class="content">
+
+    <!-- DASHBOARD -->
+    <div class="page active" id="page-dash">
+      <div class="dash-grid">
+        <div class="dash-card" onclick="goPage('tasks')"><div class="dash-card-icon" style="background:rgba(79,142,247,.15)">📋</div><div><div class="dash-card-num" id="ds-all">0</div><div class="dash-card-label">إجمالي المهام</div></div></div>
+        <div class="dash-card" onclick="quickFilter('wip')"><div class="dash-card-icon" style="background:rgba(247,162,62,.15)">⚡</div><div><div class="dash-card-num" id="ds-wip" style="color:var(--wip)">0</div><div class="dash-card-label">قيد التنفيذ</div></div></div>
+        <div class="dash-card" onclick="quickFilter('done')"><div class="dash-card-icon" style="background:rgba(0,200,150,.15)">✅</div><div><div class="dash-card-num" id="ds-done" style="color:var(--done)">0</div><div class="dash-card-label">منتهية</div></div></div>
+        <div class="dash-card" onclick="quickFilter('overdue')"><div class="dash-card-icon" style="background:rgba(255,92,122,.15)">⏰</div><div><div class="dash-card-num" id="ds-overdue" style="color:var(--cancel)">0</div><div class="dash-card-label">متأخرة</div></div></div>
+      </div>
+      <div class="dash-row">
+        <div class="dash-panel"><div class="dash-panel-title">📈 توزيع المهام</div><div id="dash-prog"></div></div>
+        <div class="dash-panel"><div class="dash-panel-title">🏆 أكثر الموظفين إنجازاً</div><div id="dash-leaders"></div></div>
+      </div>
+      <div class="dash-row">
+        <div class="dash-panel"><div class="dash-panel-title">🕐 آخر المهام المضافة</div><div id="dash-recent"></div></div>
+        <div class="dash-panel"><div class="dash-panel-title">📅 مهام تستحق قريباً</div><div id="dash-upcoming"></div></div>
+      </div>
+    </div>
+
+    <!-- TASKS -->
+    <div class="page" id="page-tasks">
+      <div class="filter-bar">
+        <div class="pills">
+          <button class="pill active" data-f="all" onclick="setFilter('all')">الكل</button>
+          <button class="pill p-pending" data-f="pending" onclick="setFilter('pending')">معلّقة</button>
+          <button class="pill p-wip" data-f="wip" onclick="setFilter('wip')">قيد التنفيذ</button>
+          <button class="pill p-done" data-f="done" onclick="setFilter('done')">منتهية</button>
+          <button class="pill p-cancel" data-f="cancelled" onclick="setFilter('cancelled')">ملغية</button>
+          <button class="pill p-cancel" data-f="overdue" onclick="setFilter('overdue')">⚠️ متأخرة</button>
+        </div>
+        <div class="filter-right">
+          <select class="fselect" id="filter-emp" onchange="renderTasks()"><option value="">كل الموظفين</option></select>
+          <select class="fselect" id="sort-sel" onchange="renderTasks()">
+            <option value="created">الأحدث</option><option value="due">الموعد</option>
+            <option value="priority">الأولوية</option><option value="emp">الموظف</option>
+          </select>
+        </div>
+      </div>
+      <div id="overdue-banner"></div>
+      <div class="tasks-list" id="tasks-container"></div>
+    </div>
+
+    <!-- EMPLOYEES -->
+    <div class="page" id="page-emps">
+      <div style="margin-bottom:16px;display:flex;justify-content:flex-end">
+        <button class="btn btn-primary" onclick="openEmpModal()">＋ إضافة موظف</button>
+      </div>
+      <div class="emp-grid" id="emp-grid"></div>
+    </div>
+
+    <!-- CALENDAR -->
+    <div class="page" id="page-cal">
+      <div class="cal-header">
+        <div class="cal-nav">
+          <button class="cal-nav-btn" onclick="changeMonth(1)">›</button>
+          <span class="cal-month" id="cal-label"></span>
+          <button class="cal-nav-btn" onclick="changeMonth(-1)">‹</button>
+        </div>
+        <button class="btn btn-primary" onclick="openTaskModal()">＋ مهمة جديدة</button>
+      </div>
+      <div class="cal-grid">
+        <div class="cal-head">
+          <div class="cal-head-day">أحد</div><div class="cal-head-day">إثنين</div><div class="cal-head-day">ثلاثاء</div>
+          <div class="cal-head-day">أربعاء</div><div class="cal-head-day">خميس</div><div class="cal-head-day">جمعة</div><div class="cal-head-day">سبت</div>
+        </div>
+        <div class="cal-body" id="cal-body"></div>
+      </div>
+    </div>
+
+    <!-- WORKSPACES LIST -->
+    <div class="page" id="page-workspaces">
+      <div id="pending-invites-section"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+        <div class="ws-section-title" style="margin:0">🏢 مساحاتي المشتركة</div>
+        <button class="btn btn-primary" onclick="openCreateWsModal()">＋ مساحة جديدة</button>
+      </div>
+      <div class="ws-grid" id="ws-grid"></div>
+    </div>
+
+    <!-- ADMIN PAGE -->
+    <div class="page" id="page-admin">
+      <div class="admin-panel">
+        <!-- Stats row -->
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">
+          <div class="dash-card" style="cursor:default"><div class="dash-card-icon" style="background:rgba(0,200,150,.15)">🟢</div><div><div class="dash-card-num" id="adm-online" style="color:var(--done)">0</div><div class="dash-card-label">متصل الآن</div></div></div>
+          <div class="dash-card" style="cursor:default"><div class="dash-card-icon" style="background:rgba(79,142,247,.15)">👥</div><div><div class="dash-card-num" id="adm-total">0</div><div class="dash-card-label">إجمالي المستخدمين</div></div></div>
+          <div class="dash-card" style="cursor:default"><div class="dash-card-icon" style="background:rgba(247,162,62,.15)">🏢</div><div><div class="dash-card-num" id="adm-ws">0</div><div class="dash-card-label">المساحات المشتركة</div></div></div>
+          <div class="dash-card" style="cursor:default"><div class="dash-card-icon" style="background:rgba(255,92,122,.15)">📋</div><div><div class="dash-card-num" id="adm-tasks">0</div><div class="dash-card-label">إجمالي المهام</div></div></div>
+        </div>
+
+        <!-- Broadcast notification -->
+        <div class="admin-section">
+          <div class="admin-section-title">📣 إرسال إشعار مخصص</div>
+          <div style="font-size:.75rem;color:var(--muted);margin-bottom:10px">اختر المستخدمين المستهدفين أو اختر "الكل"</div>
+          <div class="broadcast-targets" id="broadcast-targets" onclick="document.getElementById('broadcast-user-select').focus()">
+            <select class="broadcast-select" id="broadcast-user-select" onchange="addBroadcastTarget(this)">
+              <option value="">+ إضافة مستخدم...</option>
+            </select>
+          </div>
+          <div style="display:flex;gap:8px;margin-bottom:10px">
+            <button class="btn btn-ghost btn-sm" onclick="selectAllBroadcast()">✓ الكل</button>
+            <button class="btn btn-ghost btn-sm" onclick="clearBroadcastTargets()">✕ مسح</button>
+          </div>
+          <input class="fi" id="broadcast-title" type="text" placeholder="عنوان الإشعار..." style="margin-bottom:8px">
+          <textarea class="fta" id="broadcast-msg" placeholder="نص الإشعار..." style="min-height:60px;margin-bottom:10px"></textarea>
+          <button class="btn btn-primary" onclick="sendBroadcast()">📣 إرسال الإشعار</button>
+        </div>
+
+        <!-- Users list -->
+        <div class="admin-section">
+          <div class="admin-section-title" style="justify-content:space-between">
+            <span>👥 المستخدمون المسجلون</span>
+            <input class="fi" id="admin-search" type="text" placeholder="بحث..." style="width:160px;padding:5px 10px;font-size:.78rem" oninput="renderAdminUsers()">
+          </div>
+          <div id="admin-users-list"><div class="empty" style="padding:30px"><div class="ei" style="font-size:1.8rem">⏳</div><p>جاري التحميل...</p></div></div>
+        </div>
+
+        <!-- Recent sessions -->
+        <div class="admin-section">
+          <div class="admin-section-title">🕐 آخر جلسات الدخول</div>
+          <div id="admin-sessions-list"><div class="empty" style="padding:20px"><div class="ei" style="font-size:1.5rem">📋</div><p style="font-size:.8rem">لا توجد جلسات</p></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- WORKSPACE DETAIL -->
+    <div class="page" id="page-ws-detail">
+      <div class="ws-detail-header">
+        <button class="btn btn-ghost btn-sm" onclick="goPage('workspaces')" style="margin-left:8px">← رجوع</button>
+        <div class="ws-detail-icon">🏢</div>
+        <div class="ws-detail-info">
+          <div class="ws-detail-name" id="ws-detail-name">...</div>
+          <div class="ws-detail-sub" id="ws-detail-sub">...</div>
+        </div>
+        <div id="ws-detail-actions"></div>
+      </div>
+      <div class="ws-tabs">
+        <button class="ws-tab active" id="wstab-tasks" onclick="switchWsTab('tasks')">📋 المهام</button>
+        <button class="ws-tab" id="wstab-members" onclick="switchWsTab('members')">👥 الأعضاء</button>
+      </div>
+      <div id="ws-tasks-panel"></div>
+      <div id="ws-members-panel" style="display:none"></div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+<div class="bottom-nav" id="bottom-nav">
+  <div class="bnav-item active" id="bnav-dash" onclick="goPage('dash');closeSidebar()">
+    <div class="bnav-icon">📊</div><span>الرئيسية</span>
+  </div>
+  <div class="bnav-item" id="bnav-tasks" onclick="goPage('tasks');closeSidebar()">
+    <div class="bnav-icon">📋</div><span>المهام</span>
+    <div class="bnav-badge" id="bnav-badge-tasks">0</div>
+  </div>
+  <div class="bnav-item" id="bnav-workspaces" onclick="goPage('workspaces');closeSidebar()">
+    <div class="bnav-icon">🏢</div><span>المساحات</span>
+    <div class="bnav-badge" id="bnav-badge-ws">0</div>
+  </div>
+  <div class="bnav-item" id="bnav-emps" onclick="goPage('emps');closeSidebar()">
+    <div class="bnav-icon">👥</div><span>موظفوي</span>
+  </div>
+  <div class="bnav-item" id="bnav-notif" onclick="toggleNotifPanel()">
+    <div class="bnav-icon">🔔</div><span>إشعارات</span>
+    <div class="bnav-badge" id="bnav-badge-notif">0</div>
+  </div>
+</div>
+</div><!-- /app -->
+
+<!-- ══ TASK MODAL ══ -->
+<div class="overlay" id="task-overlay" onclick="handleOvClick(event,'task-overlay')">
+<div class="modal">
+  <div class="modal-title"><span id="tm-icon">✦</span><span id="tm-title">إضافة مهمة جديدة</span></div>
+  <div class="fg"><label>عنوان المهمة *</label><input class="fi" id="f-title" type="text" placeholder="أدخل عنوان المهمة..."></div>
+  <div class="fg"><label>الوصف</label><textarea class="fta" id="f-desc" placeholder="تفاصيل إضافية..."></textarea></div>
+  <div class="frow">
+    <div class="fg"><label>الموظف المسؤول</label><select class="fsel" id="f-emp"><option value="">— اختر موظفاً —</option></select></div>
+    <div class="fg"><label>الفئة</label><input class="fi" id="f-cat" type="text" placeholder="مثال: عمل، مالية..."></div>
+  </div>
+  <div class="frow3">
+    <div class="fg"><label>الحالة</label><select class="fsel" id="f-status"><option value="pending">معلّقة</option><option value="wip">قيد التنفيذ</option><option value="done">منتهية</option><option value="cancelled">ملغية</option></select></div>
+    <div class="fg"><label>الأولوية</label><select class="fsel" id="f-priority"><option value="medium">متوسطة</option><option value="high">عالية 🔴</option><option value="low">منخفضة 🟢</option></select></div>
+    <div class="fg"><label>تاريخ الاستحقاق</label><input class="fi" id="f-due" type="date"></div>
+  </div>
+  <div class="fg"><label>ملاحظات</label><input class="fi" id="f-notes" type="text" placeholder="أي ملاحظات..."></div>
+  <div class="modal-foot">
+    <button class="btn btn-ghost" onclick="closeModal('task-overlay')">إلغاء</button>
+    <button class="btn btn-primary" id="save-task-btn" onclick="saveTask()">💾 حفظ المهمة</button>
+  </div>
+</div></div>
+
+<!-- ══ EMPLOYEE MODAL ══ -->
+<div class="overlay" id="emp-overlay" onclick="handleOvClick(event,'emp-overlay')">
+<div class="modal">
+  <div class="modal-title"><span id="em-icon">👤</span><span id="em-title">إضافة موظف</span></div>
+  <div class="frow">
+    <div class="fg"><label>الاسم الكامل *</label><input class="fi" id="ef-name" type="text"></div>
+    <div class="fg"><label>المسمى الوظيفي</label><input class="fi" id="ef-role" type="text"></div>
+  </div>
+  <div class="frow">
+    <div class="fg"><label>القسم</label><input class="fi" id="ef-dept" type="text"></div>
+    <div class="fg"><label>البريد الإلكتروني</label><input class="fi" id="ef-email" type="email"></div>
+  </div>
+  <div class="fg"><label>لون الهوية</label><div class="color-row" id="color-row"></div></div>
+  <div class="modal-foot">
+    <button class="btn btn-ghost" onclick="closeModal('emp-overlay')">إلغاء</button>
+    <button class="btn btn-primary" id="save-emp-btn" onclick="saveEmp()">💾 حفظ الموظف</button>
+  </div>
+</div></div>
+
+<!-- ══ DETAIL MODAL ══ -->
+<div class="overlay" id="detail-overlay" onclick="handleOvClick(event,'detail-overlay')">
+<div class="modal"><div id="detail-body"></div><div class="modal-foot" id="detail-foot"></div></div>
+</div>
+
+<!-- ══ CREATE WORKSPACE MODAL ══ -->
+<div class="overlay" id="ws-create-overlay" onclick="handleOvClick(event,'ws-create-overlay')">
+<div class="modal">
+  <div class="modal-title">🏢 إنشاء مساحة مشتركة جديدة</div>
+  <div class="auth-error" id="ws-create-error"></div>
+  <div class="fg"><label>اسم المساحة *</label><input class="fi" id="ws-name-input" type="text" placeholder="مثال: مشروع التطوير، فريق المبيعات..."></div>
+  <div class="fg"><label>الوصف (اختياري)</label><input class="fi" id="ws-desc-input" type="text" placeholder="وصف مختصر للمساحة..."></div>
+  <div class="modal-foot">
+    <button class="btn btn-ghost" onclick="closeModal('ws-create-overlay')">إلغاء</button>
+    <button class="btn btn-primary" id="ws-create-btn" onclick="createWorkspace()">🏢 إنشاء المساحة</button>
+  </div>
+</div></div>
+
+<!-- ══ INVITE MODAL ══ -->
+<div class="overlay" id="invite-overlay" onclick="handleOvClick(event,'invite-overlay')">
+<div class="modal">
+  <div class="modal-title">✉️ دعوة عضو جديد</div>
+  <div class="auth-error" id="invite-error"></div>
+  <div class="auth-info" id="invite-info"></div>
+  <div class="fg"><label>البريد الإلكتروني للمدعو *</label><input class="fi" id="invite-email-input" type="email" placeholder="example@email.com"></div>
+  <div style="font-size:.78rem;color:var(--muted);margin-bottom:14px">سيصل للمدعو إشعار بالدعوة عند تسجيل دخوله التالي</div>
+  <div class="modal-foot">
+    <button class="btn btn-ghost" onclick="closeModal('invite-overlay')">إلغاء</button>
+    <button class="btn btn-primary" id="invite-btn" onclick="sendInvitation()">✉️ إرسال الدعوة</button>
+  </div>
+</div></div>
+
+<!-- ══ WORKSPACE TASK MODAL ══ -->
+<div class="overlay" id="ws-task-overlay" onclick="handleOvClick(event,'ws-task-overlay')">
+<div class="modal">
+  <div class="modal-title"><span id="wt-icon">✦</span><span id="wt-title">إضافة مهمة للمساحة</span></div>
+  <div class="fg"><label>عنوان المهمة *</label><input class="fi" id="wt-title-input" type="text" placeholder="أدخل عنوان المهمة..."></div>
+  <div class="fg"><label>الوصف</label><textarea class="fta" id="wt-desc" placeholder="تفاصيل إضافية..."></textarea></div>
+  <div class="frow">
+    <div class="fg"><label>تعيين إلى *</label><select class="fsel" id="wt-assignee"><option value="">— اختر عضواً —</option></select></div>
+    <div class="fg"><label>الفئة</label><input class="fi" id="wt-cat" type="text" placeholder="مثال: تطوير، تسويق..."></div>
+  </div>
+  <div class="frow3">
+    <div class="fg"><label>الحالة</label><select class="fsel" id="wt-status"><option value="pending">معلّقة</option><option value="wip">قيد التنفيذ</option><option value="done">منتهية</option><option value="cancelled">ملغية</option></select></div>
+    <div class="fg"><label>الأولوية</label><select class="fsel" id="wt-priority"><option value="medium">متوسطة</option><option value="high">عالية 🔴</option><option value="low">منخفضة 🟢</option></select></div>
+    <div class="fg"><label>تاريخ الاستحقاق</label><input class="fi" id="wt-due" type="date"></div>
+  </div>
+  <div class="fg"><label>ملاحظات</label><input class="fi" id="wt-notes" type="text" placeholder="أي ملاحظات..."></div>
+  <div class="modal-foot">
+    <button class="btn btn-ghost" onclick="closeModal('ws-task-overlay')">إلغاء</button>
+    <button class="btn btn-primary" id="wt-save-btn" onclick="saveWsTask()">💾 حفظ المهمة</button>
+  </div>
+</div></div>
+
+<!-- ══ COMMENTS MODAL ══ -->
+<div class="overlay" id="comments-overlay" onclick="handleOvClick(event,'comments-overlay')">
+<div class="modal" style="max-width:540px">
+  <div class="modal-title" id="comments-modal-title">💬 التعليقات</div>
+  <div class="comments-section" style="margin-top:0;border-top:none;padding-top:0">
+    <div class="comment-list" id="comment-list">
+      <div class="comment-empty">جاري التحميل...</div>
+    </div>
+    <div class="comment-input-row">
+      <textarea class="fta" id="comment-input" placeholder="اكتب تعليقاً..." rows="2" onkeydown="commentKeydown(event)"></textarea>
+      <button class="comment-send-btn" id="comment-send-btn" onclick="sendComment()">➤</button>
+    </div>
+  </div>
+  <div class="modal-foot">
+    <button class="btn btn-ghost" onclick="closeModal('comments-overlay')">إغلاق</button>
+  </div>
+</div>
+</div>
+
+<div id="notif-panel-wrap" style="display:none;position:fixed;inset:0;z-index:599" onclick="closeNotifPanel()"></div>
+<div id="notif-panel" style="display:none"></div>
+<div class="toast-box" id="toast-box"></div>
+
+<!-- ══ Firebase SDKs ══ -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+/* ══ FIREBASE INIT ══ */
+const firebaseConfig={apiKey:"AIzaSyBlwlz8tMixpLdaVIxOG1GuJ08F6GjxnKs",authDomain:"task-manager-96a33.firebaseapp.com",projectId:"task-manager-96a33",storageBucket:"task-manager-96a33.firebasestorage.app",messagingSenderId:"305896717018",appId:"1:305896717018:web:1a51a67e1f914302fb83e3"};
+firebase.initializeApp(firebaseConfig);
+const auth=firebase.auth();
+const db=firebase.firestore();
+
+/* ══ CONSTANTS ══ */
+const SUPER_ADMIN='alaa12mohmad@gmail.com';
+
+/* ══ STATE ══ */
+let currentUser=null;
+let tasks=[],emps=[];
+let editTaskId=null,editEmpId=null;
+let currentFilter='all',currentPage='dash';
+let calYear,calMonth;
+const _today=new Date();
+calYear=_today.getFullYear();calMonth=_today.getMonth();
+const todayStr=fmtDateStr(_today);
+let unsubTasks=null,unsubEmps=null,unsubWorkspaces=null,unsubInvites=null,unsubWsMembers=null,unsubWsTasks=null,unsubNotifs=null;
+let tasksReady=false,empsReady=false,seeded=false;
+
+// Workspace state
+let myWorkspaces=[];
+let pendingInvites=[];
+let currentWs=null;
+let wsMembers=[];
+let wsTasks=[];
+let wsCurrentTab='tasks';
+let editWsTaskId=null;
+
+/* ══ HELPERS ══ */
+function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function initials(n){return(n||'').split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase()||'؟';}
+function fmtDate(d){if(!d)return'';const[y,m,dd]=d.split('-');return`${dd}/${m}/${y}`;}
+function fmtDateStr(d){return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
+function isOverdue(t){return t.due&&t.due<todayStr&&t.status!=='done'&&t.status!=='cancelled';}
+function empById(id){return emps.find(e=>e.id===id);}
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
+function col(name){return db.collection('users').doc(currentUser.uid).collection(name);}
+function isSuperAdmin(){return currentUser?.email===SUPER_ADMIN;}
+function myRoleInWs(){if(isSuperAdmin())return'owner';return wsMembers.find(m=>m.uid===currentUser?.uid)?.role||'member';}
+function canManageWs(){return['owner','manager'].includes(myRoleInWs());}
+const roleLabels={'owner':'👑 مالك','manager':'🔑 مدير','member':'👤 عضو'};
+const roleClass={'owner':'role-owner','manager':'role-manager','member':'role-member'};
+const COLORS=['#4f8ef7','#7c5ce4','#00c896','#f7a23e','#ff5c7a','#38d9a9','#74b9ff','#fd79a8','#a29bfe','#e17055'];
+
+/* ══ SYNC BADGE ══ */
+function setSyncStatus(s){const dot=document.getElementById('sync-dot');const lbl=document.getElementById('sync-label');if(!dot)return;dot.className='sync-dot '+s;lbl.textContent=s==='synced'?'متزامن':s==='error'?'خطأ':' جاري المزامنة';}
+function setLoadText(t){document.getElementById('ld-text').textContent=t;}
+function hideLoading(){const ov=document.getElementById('loading-overlay');ov.classList.add('hidden');setTimeout(()=>ov.style.display='none',450);}
+
+/* ══ AUTH STATE ══ */
+auth.onAuthStateChanged(user=>{
+  if(user){currentUser=user;showApp(user);}
+  else{currentUser=null;stopAllListeners();showAuthScreen();}
+});
+
+function showApp(user){
+  const isAdmin=user.email===SUPER_ADMIN;
+  document.getElementById('su-name').textContent=user.displayName||'مستخدم';
+  document.getElementById('su-role').innerHTML=isAdmin?`<span class="admin-crown">👑 المدير الرئيسي</span>`:user.email;
+  document.getElementById('su-av').textContent=initials(user.displayName||user.email);
+  document.getElementById('auth-screen').style.display='none';
+  document.getElementById('app').style.display='flex';
+  setLoadText('جاري تحميل بياناتك...');
+  tasksReady=false;empsReady=false;seeded=false;
+  startPersonalListeners();
+  startWsListeners();
+  startNotifListener();
+  startPresenceTracking();
+  // Show admin nav only for super admin
+  if(user.email===SUPER_ADMIN){
+    ['admin-nav-hr','admin-nav-label','nav-admin'].forEach(id=>{
+      const el=document.getElementById(id);if(el)el.style.display='';
+    });
+  }
+}
+
+function showAuthScreen(){hideLoading();document.getElementById('app').style.display='none';document.getElementById('auth-screen').style.display='flex';}
+
+function stopAllListeners(){
+  [()=>unsubTasks&&unsubTasks(),()=>unsubEmps&&unsubEmps(),()=>unsubWorkspaces&&unsubWorkspaces(),()=>unsubInvites&&unsubInvites(),()=>unsubWsMembers&&unsubWsMembers(),()=>unsubWsTasks&&unsubWsTasks(),()=>unsubNotifs&&unsubNotifs(),()=>unsubAdminUsers&&unsubAdminUsers()].forEach(f=>f()); if(presenceInterval){clearInterval(presenceInterval);presenceInterval=null;} updatePresence(false).catch(()=>{});
+  tasks=[];emps=[];myWorkspaces=[];pendingInvites=[];wsMembers=[];wsTasks=[];
+}
+
+/* ══ PERSONAL LISTENERS ══ */
+function startPersonalListeners(){
+  unsubEmps=col('employees').onSnapshot(snap=>{emps=snap.docs.map(d=>({...d.data(),id:d.id}));empsReady=true;checkSeeded();if(seeded){setSyncStatus('synced');renderAll();}},()=>setSyncStatus('error'));
+  unsubTasks=col('tasks').orderBy('created','desc').onSnapshot(snap=>{tasks=snap.docs.map(d=>({...d.data(),id:d.id}));tasksReady=true;checkSeeded();if(seeded){setSyncStatus('synced');renderAll();}},()=>setSyncStatus('error'));
+}
+function checkSeeded(){
+  if(tasksReady&&empsReady){
+    seeded=true;setSyncStatus('synced');hideLoading();renderAll();
+  }
+}
+
+/* ══ WORKSPACE LISTENERS ══ */
+function startWsListeners(){
+  // User's workspaces
+  unsubWorkspaces=db.collection('workspaces').where('memberUids','array-contains',currentUser.uid).onSnapshot(snap=>{
+    myWorkspaces=snap.docs.map(d=>({...d.data(),id:d.id}));
+    document.getElementById('nb-ws').textContent=myWorkspaces.length;
+    if(currentPage==='workspaces')renderWorkspacesPage();
+    if(currentPage==='ws-detail'&&currentWs)renderWsDetail();
+  });
+  // Pending invitations for this email
+  unsubInvites=db.collection('invitations').where('inviteeEmail','==',currentUser.email).where('status','==','pending').onSnapshot(snap=>{
+    pendingInvites=snap.docs.map(d=>({...d.data(),id:d.id}));
+    const n=pendingInvites.length;
+    document.getElementById('nb-invites').textContent=n;
+    document.getElementById('nav-invites').style.display=n>0?'flex':'none';
+    if(currentPage==='workspaces')renderWorkspacesPage();
+  });
+}
+
+/* ══ AUTH UI ══ */
+function switchTab(t){
+  document.querySelectorAll('.auth-tab').forEach((b,i)=>b.classList.toggle('active',i===(t==='login'?0:1)));
+  document.getElementById('panel-login').classList.toggle('active',t==='login');
+  document.getElementById('panel-register').classList.toggle('active',t==='register');
+  clearAuthErrors();
+}
+function showAuthErr(id,msg){const el=document.getElementById(id);el.textContent=msg;el.classList.add('show');}
+function clearAuthErrors(){['login-error','reg-error','reset-error','reset-info'].forEach(id=>{const el=document.getElementById(id);if(el){el.textContent='';el.classList.remove('show');}});}
+function togglePw(id,btn){const inp=document.getElementById(id);const s=inp.type==='password';inp.type=s?'text':'password';btn.textContent=s?'🙈':'👁';}
+function showReset(){document.getElementById('auth-main-card').style.display='none';document.getElementById('auth-reset-card').style.display='block';clearAuthErrors();}
+function hideReset(){document.getElementById('auth-reset-card').style.display='none';document.getElementById('auth-main-card').style.display='block';}
+function setBtnLoading(id,loading,label=''){const btn=document.getElementById(id);btn.disabled=loading;if(loading)btn.innerHTML='<div class="ld-spinner" style="width:16px;height:16px;border-width:2px;margin:0 auto"></div>';else btn.innerHTML=label;}
+function checkStrength(){
+  const pw=document.getElementById('reg-pw').value;
+  const bars=['bar1','bar2','bar3','bar4'];
+  bars.forEach(b=>document.getElementById(b).className='pw-bar');
+  if(!pw){document.getElementById('pw-hint').textContent='أدخل كلمة مرور';return;}
+  let s=0;if(pw.length>=8)s++;if(/[A-Z]/.test(pw))s++;if(/[0-9]/.test(pw))s++;if(/[^A-Za-z0-9]/.test(pw))s++;
+  const cls=['weak','weak','ok','strong'];const lbs=['ضعيفة جداً','ضعيفة','متوسطة','قوية'];
+  for(let i=0;i<s;i++)document.getElementById(bars[i]).className='pw-bar '+cls[s-1];
+  document.getElementById('pw-hint').textContent='القوة: '+lbs[s-1];
+}
+
+/* ══ AUTH ACTIONS ══ */
+async function doLogin(){
+  const email=document.getElementById('login-email').value.trim();
+  const pw=document.getElementById('login-pw').value;
+  clearAuthErrors();
+  if(!email||!pw){showAuthErr('login-error','يرجى ملء جميع الحقول');return;}
+  setBtnLoading('login-btn',true);
+  try{await auth.signInWithEmailAndPassword(email,pw);}
+  catch(e){
+    const m={'auth/user-not-found':'البريد غير مسجل','auth/wrong-password':'كلمة المرور غير صحيحة','auth/invalid-credential':'البريد أو كلمة المرور غير صحيحة','auth/too-many-requests':'كثير من المحاولات'};
+    showAuthErr('login-error',m[e.code]||'خطأ في تسجيل الدخول');
+    setBtnLoading('login-btn',false,'<span>🔑</span> دخول');
+  }
+}
+async function doRegister(){
+  const name=document.getElementById('reg-name').value.trim();
+  const email=document.getElementById('reg-email').value.trim();
+  const pw=document.getElementById('reg-pw').value;
+  const pw2=document.getElementById('reg-pw2').value;
+  clearAuthErrors();
+  if(!name||!email||!pw||!pw2){showAuthErr('reg-error','يرجى ملء جميع الحقول');return;}
+  if(pw!==pw2){showAuthErr('reg-error','كلمتا المرور غير متطابقتين');return;}
+  if(pw.length<8){showAuthErr('reg-error','كلمة المرور يجب أن تكون 8 أحرف على الأقل');return;}
+  setBtnLoading('reg-btn',true);
+  try{const c=await auth.createUserWithEmailAndPassword(email,pw);await c.user.updateProfile({displayName:name});}
+  catch(e){
+    const m={'auth/email-already-in-use':'هذا البريد مسجل مسبقاً','auth/invalid-email':'البريد غير صالح','auth/weak-password':'كلمة المرور ضعيفة'};
+    showAuthErr('reg-error',m[e.code]||'خطأ في إنشاء الحساب');
+    setBtnLoading('reg-btn',false,'<span>✨</span> إنشاء حساب');
+  }
+}
+async function doReset(){
+  const email=document.getElementById('reset-email').value.trim();
+  clearAuthErrors();
+  if(!email){showAuthErr('reset-error','أدخل البريد الإلكتروني');return;}
+  setBtnLoading('reset-btn',true);
+  try{
+    await auth.sendPasswordResetEmail(email);
+    const i=document.getElementById('reset-info');i.textContent='✅ تم إرسال رابط الاستعادة على بريدك';i.classList.add('show');
+  }catch(e){
+    const m={'auth/user-not-found':'هذا البريد غير مسجل','auth/invalid-email':'البريد غير صالح'};
+    showAuthErr('reset-error',m[e.code]||'خطأ في إرسال البريد');
+  }finally{setBtnLoading('reset-btn',false,'<span>📧</span> إرسال رابط الاستعادة');}
+}
+async function doLogout(){if(!confirm('هل تريد تسجيل الخروج؟'))return;stopAllListeners();await auth.signOut();}
+
+/* ══ NAVIGATION ══ */
+const pageTitles={dash:'لوحة التحكم',tasks:'مهامي',emps:'موظفوي',cal:'التقويم',workspaces:'المساحات المشتركة','ws-detail':'...',admin:'👑 لوحة المالك'};
+
+// ── Sidebar mobile ──
+function toggleSidebar(){
+  const sb=document.getElementById('app')?.querySelector('.sidebar');
+  const ov=document.getElementById('sidebar-overlay');
+  if(!sb)return;
+  const open=sb.classList.toggle('open');
+  ov.classList.toggle('open',open);
+}
+function closeSidebar(){
+  const sb=document.getElementById('app')?.querySelector('.sidebar');
+  const ov=document.getElementById('sidebar-overlay');
+  if(sb)sb.classList.remove('open');
+  if(ov)ov.classList.remove('open');
+}
+
+function goPage(p){
+  currentPage=p;
+  document.querySelectorAll('.page').forEach(el=>el.classList.remove('active'));
+  document.getElementById('page-'+p)?.classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));
+  document.getElementById('nav-'+p)?.classList.add('active');
+  document.getElementById('page-title').textContent=pageTitles[p]||p;
+  // Bottom nav sync
+  document.querySelectorAll('.bnav-item').forEach(el=>el.classList.remove('active'));
+  document.getElementById('bnav-'+p)?.classList.add('active');
+  if(p==='tasks'){currentFilter='all';syncPills();renderTasks();}
+  if(p==='dash')renderDash();
+  if(p==='emps')renderEmps();
+  if(p==='cal')renderCal();
+  if(p==='workspaces')renderWorkspacesPage();
+  if(p==='ws-detail'&&currentWs)renderWsDetail();
+  if(p==='admin')renderAdminPanel();
+}
+function quickFilter(f){currentFilter=f;goPage('tasks');syncPills();document.getElementById('page-title').textContent={all:'مهامي',pending:'المعلّقة',wip:'قيد التنفيذ',done:'المنتهية',cancelled:'الملغية',overdue:'المتأخرة'}[f]||'مهامي';}
+
+/* ══ MODALS ══ */
+function openModal(id){document.getElementById(id).classList.add('open');}
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+function handleOvClick(e,id){if(e.target===document.getElementById(id))closeModal(id);}
+
+/* ══ WORKSPACE FUNCTIONS ══ */
+
+// Create workspace
+function openCreateWsModal(){
+  document.getElementById('ws-name-input').value='';
+  document.getElementById('ws-desc-input').value='';
+  document.getElementById('ws-create-error').textContent='';
+  document.getElementById('ws-create-error').classList.remove('show');
+  openModal('ws-create-overlay');
+  setTimeout(()=>document.getElementById('ws-name-input').focus(),200);
+}
+async function createWorkspace(){
+  const name=document.getElementById('ws-name-input').value.trim();
+  const desc=document.getElementById('ws-desc-input').value.trim();
+  const errEl=document.getElementById('ws-create-error');
+  errEl.textContent=''; errEl.classList.remove('show');
+  if(!name){errEl.textContent='يرجى إدخال اسم المساحة';errEl.classList.add('show');return;}
+  setBtnLoading('ws-create-btn',true);
+  setSyncStatus('syncing');
+  try{
+    const wsId=uid();
+    const color=COLORS[Math.floor(Math.random()*COLORS.length)];
+    const wsDoc={
+      id:wsId,name,desc,
+      ownerId:currentUser.uid,
+      ownerEmail:currentUser.email,
+      ownerName:currentUser.displayName||currentUser.email,
+      memberUids:[currentUser.uid],
+      createdAt:Date.now()
+    };
+    const memberData={
+      uid:currentUser.uid,
+      email:currentUser.email,
+      displayName:currentUser.displayName||currentUser.email,
+      role:'owner',
+      joinedAt:Date.now(),
+      color
+    };
+    // ── كتابتان منفصلتان: workspace أولاً، ثم member ──
+    // بدون batch لأن قاعدة subcollection تحتاج الـ workspace موجوداً
+    await db.collection('workspaces').doc(wsId).set(wsDoc);
+    await db.collection('workspaces').doc(wsId).collection('members').doc(currentUser.uid).set(memberData);
+    closeModal('ws-create-overlay');
+    toast('تم إنشاء المساحة بنجاح ✓','ok');
+    setSyncStatus('synced');
+  }catch(e){
+    console.error('createWorkspace error:',e);
+    errEl.textContent='خطأ: '+e.message;
+    errEl.classList.add('show');
+    setSyncStatus('error');
+  }
+  finally{setBtnLoading('ws-create-btn',false,'🏢 إنشاء المساحة');}
+}
+
+// Open workspace detail
+function openWs(wsId){
+  currentWs=myWorkspaces.find(w=>w.id===wsId);
+  if(!currentWs)return;
+  wsMembers=[];wsTasks=[];editWsTaskId=null;
+  // Stop previous listeners
+  if(unsubWsMembers){unsubWsMembers();unsubWsMembers=null;}
+  if(unsubWsTasks){unsubWsTasks();unsubWsTasks=null;}
+  // Start new listeners
+  unsubWsMembers=db.collection('workspaces').doc(wsId).collection('members').onSnapshot(snap=>{
+    wsMembers=snap.docs.map(d=>({...d.data(),uid:d.id}));
+    if(currentPage==='ws-detail')renderWsDetail();
+  });
+  unsubWsTasks=db.collection('workspaces').doc(wsId).collection('tasks').orderBy('created','desc').onSnapshot(snap=>{
+    wsTasks=snap.docs.map(d=>({...d.data(),id:d.id}));
+    if(currentPage==='ws-detail')renderWsDetail();
+  });
+  wsCurrentTab='tasks';
+  document.getElementById('page-title').textContent=currentWs.name;
+  goPage('ws-detail');
+}
+
+// Send invitation
+let inviteWsId=null;
+function openInviteModal(){
+  inviteWsId=currentWs?.id;
+  document.getElementById('invite-email-input').value='';
+  ['invite-error','invite-info'].forEach(id=>{const el=document.getElementById(id);el.textContent='';el.classList.remove('show');});
+  openModal('invite-overlay');
+  setTimeout(()=>document.getElementById('invite-email-input').focus(),200);
+}
+async function sendInvitation(){
+  const email=document.getElementById('invite-email-input').value.trim().toLowerCase();
+  ['invite-error','invite-info'].forEach(id=>{const el=document.getElementById(id);el.textContent='';el.classList.remove('show');});
+  if(!email){const el=document.getElementById('invite-error');el.textContent='يرجى إدخال البريد الإلكتروني';el.classList.add('show');return;}
+  if(email===currentUser.email){const el=document.getElementById('invite-error');el.textContent='لا يمكنك دعوة نفسك';el.classList.add('show');return;}
+  // Check already member
+  if(wsMembers.some(m=>m.email===email)){const el=document.getElementById('invite-error');el.textContent='هذا المستخدم عضو بالفعل في المساحة';el.classList.add('show');return;}
+  setBtnLoading('invite-btn',true);
+  setSyncStatus('syncing');
+  try{
+    const invId=uid();
+    // محاولة التحقق من الدعوات المكررة (قد تفشل بسبب قواعد Firestore - نتجاهل الخطأ)
+    try{
+      const existing=await db.collection('invitations')
+        .where('workspaceId','==',inviteWsId)
+        .where('inviteeEmail','==',email)
+        .where('status','==','pending').get();
+      if(!existing.empty){
+        const el=document.getElementById('invite-error');
+        el.textContent='تم إرسال دعوة لهذا البريد مسبقاً';
+        el.classList.add('show');
+        return;
+      }
+    }catch(readErr){
+      // قواعد Firestore لا تسمح بالقراءة - نكمل الإرسال
+      console.warn('Duplicate check skipped:', readErr.code);
+    }
+    await db.collection('invitations').doc(invId).set({
+      id:invId,
+      workspaceId:inviteWsId,
+      workspaceName:currentWs.name,
+      invitedByUid:currentUser.uid,
+      invitedByName:currentUser.displayName||currentUser.email,
+      inviteeEmail:email,
+      status:'pending',
+      createdAt:Date.now()
+    });
+    const el=document.getElementById('invite-info');
+    el.textContent='✅ تم إرسال الدعوة بنجاح، سيراها عند دخوله التالي';
+    el.classList.add('show');
+    document.getElementById('invite-email-input').value='';
+    toast('تم إرسال الدعوة ✓','ok');
+    setSyncStatus('synced');
+  }catch(e){
+    console.error('sendInvitation error:',e);
+    const el=document.getElementById('invite-error');
+    el.textContent='خطأ: '+(e.code==='permission-denied'?'تأكد من إعدادات Firestore':e.message);
+    el.classList.add('show');
+    setSyncStatus('error');
+  }
+  finally{setBtnLoading('invite-btn',false,'✉️ إرسال الدعوة');}
+}
+
+// Accept invitation
+async function acceptInvite(invId){
+  const inv=pendingInvites.find(i=>i.id===invId);
+  if(!inv)return;
+  setSyncStatus('syncing');
+  try{
+    const color=COLORS[Math.floor(Math.random()*COLORS.length)];
+    // 1) أضف UID لـ memberUids أولاً حتى تنجح قاعدة الـ subcollection
+    await db.collection('workspaces').doc(inv.workspaceId).update({
+      memberUids: firebase.firestore.FieldValue.arrayUnion(currentUser.uid)
+    });
+    // 2) ثم أضف بيانات العضو بعد تحديث memberUids
+    await db.collection('workspaces').doc(inv.workspaceId).collection('members').doc(currentUser.uid).set({
+      uid:currentUser.uid,email:currentUser.email,
+      displayName:currentUser.displayName||currentUser.email,
+      role:'member',joinedAt:Date.now(),color
+    });
+    // 3) حدّث حالة الدعوة
+    await db.collection('invitations').doc(invId).update({status:'accepted'});
+    // أشعر من أرسل الدعوة بأنها قُبلت
+    await createNotif(inv.invitedByUid,{
+      type:'ws_invite',
+      title:`🎉 قبل ${currentUser.displayName||currentUser.email} الدعوة`,
+      body:`انضم إلى مساحة "${inv.workspaceName}"`,
+      link:{wsId:inv.workspaceId}
+    });
+    toast(`انضممت إلى "${inv.workspaceName}" ✓`,'ok');
+    setSyncStatus('synced');
+  }catch(e){console.error('acceptInvite:',e);toast('خطأ في قبول الدعوة: '+e.message,'err');setSyncStatus('error');}
+}
+
+// Reject invitation
+async function rejectInvite(invId){
+  setSyncStatus('syncing');
+  try{await db.collection('invitations').doc(invId).update({status:'rejected'});toast('تم رفض الدعوة','inf');}
+  catch(e){toast('خطأ','err');}
+}
+
+// Change member role (super admin / workspace owner only)
+async function changeMemberRole(uid,newRole){
+  setSyncStatus('syncing');
+  try{await db.collection('workspaces').doc(currentWs.id).collection('members').doc(uid).update({role:newRole});toast('تم تغيير الدور ✓','ok');setSyncStatus('synced');}
+  catch(e){toast('خطأ في تغيير الدور','err');setSyncStatus('error');}
+}
+
+// Remove member
+async function removeMember(uid){
+  if(!confirm('إزالة هذا العضو من المساحة؟'))return;
+  setSyncStatus('syncing');
+  try{
+    const batch=db.batch();
+    batch.delete(db.collection('workspaces').doc(currentWs.id).collection('members').doc(uid));
+    batch.update(db.collection('workspaces').doc(currentWs.id),{memberUids:firebase.firestore.FieldValue.arrayRemove(uid)});
+    await batch.commit();
+    toast('تم إزالة العضو','err');setSyncStatus('synced');
+  }catch(e){toast('خطأ','err');setSyncStatus('error');}
+}
+
+// Workspace task modal
+function openWsTaskModal(id=null){
+  editWsTaskId=id;
+  document.getElementById('wt-icon').textContent=id?'✏️':'✦';
+  document.getElementById('wt-title').textContent=id?'تعديل المهمة':'إضافة مهمة للمساحة';
+  // Populate assignee dropdown
+  const sel=document.getElementById('wt-assignee');
+  sel.innerHTML='<option value="">— اختر عضواً —</option>'+wsMembers.map(m=>`<option value="${m.uid}">${esc(m.displayName||m.email)}</option>`).join('');
+  if(id){
+    const t=wsTasks.find(t=>t.id===id);
+    document.getElementById('wt-title-input').value=t.title;
+    document.getElementById('wt-desc').value=t.desc||'';
+    document.getElementById('wt-assignee').value=t.assignedToUid||'';
+    document.getElementById('wt-cat').value=t.cat||'';
+    document.getElementById('wt-status').value=t.status;
+    document.getElementById('wt-priority').value=t.priority;
+    document.getElementById('wt-due').value=t.due||'';
+    document.getElementById('wt-notes').value=t.notes||'';
+  }else{
+    ['wt-title-input','wt-desc','wt-cat','wt-notes'].forEach(i=>document.getElementById(i).value='');
+    document.getElementById('wt-assignee').value='';
+    document.getElementById('wt-status').value='pending';
+    document.getElementById('wt-priority').value='medium';
+    document.getElementById('wt-due').value='';
+  }
+  openModal('ws-task-overlay');
+  setTimeout(()=>document.getElementById('wt-title-input').focus(),200);
+}
+async function saveWsTask(){
+  const title=document.getElementById('wt-title-input').value.trim();
+  const desc=document.getElementById('wt-desc').value.trim();
+  const assignedToUid=document.getElementById('wt-assignee').value;
+  const cat=document.getElementById('wt-cat').value.trim();
+  const status=document.getElementById('wt-status').value;
+  const priority=document.getElementById('wt-priority').value;
+  const due=document.getElementById('wt-due').value;
+  const notes=document.getElementById('wt-notes').value.trim();
+  if(!title){toast('يرجى إدخال عنوان المهمة','err');return;}
+  const assignedMember=wsMembers.find(m=>m.uid===assignedToUid);
+  const assignedToName=assignedMember?.displayName||assignedMember?.email||'';
+  const btn=document.getElementById('wt-save-btn');
+  btn.disabled=true;btn.textContent='⏳ جاري الحفظ...';
+  setSyncStatus('syncing');
+  try{
+    if(editWsTaskId){
+      // تحقق من تغيير الشخص المسند
+      const prevTask=wsTasks.find(t=>t.id===editWsTaskId);
+      await db.collection('workspaces').doc(currentWs.id).collection('tasks').doc(editWsTaskId).update({title,desc,assignedToUid,assignedToName,cat,status,priority,due,notes});
+      // إشعار لو تغيّر الشخص المسند
+      if(assignedToUid && assignedToUid!==prevTask?.assignedToUid){
+        await createNotif(assignedToUid,{
+          type:'task_assigned',
+          title:'📋 تم إسناد مهمة إليك',
+          body:`"${title}" في مساحة ${currentWs.name}`,
+          link:{wsId:currentWs.id,taskId:editWsTaskId}
+        });
+      }
+      // إشعار لو تغيّر الإسناد للشخص القديم
+      if(prevTask?.assignedToUid && prevTask.assignedToUid!==assignedToUid && prevTask.assignedToUid!==currentUser.uid){
+        await createNotif(prevTask.assignedToUid,{
+          type:'task_updated',
+          title:'📝 تم تعديل مهمتك',
+          body:`"${title}" — تم إعادة الإسناد`,
+          link:{wsId:currentWs.id,taskId:editWsTaskId}
+        });
+      }
+      toast('تم تحديث المهمة ✓','ok');
+    }else{
+      const id=uid();
+      await db.collection('workspaces').doc(currentWs.id).collection('tasks').doc(id).set({id,title,desc,assignedToUid,assignedToName,cat,status,priority,due,notes,createdByUid:currentUser.uid,createdByName:currentUser.displayName||currentUser.email,created:Date.now()});
+      // إشعار للموظف المُسند إليه
+      if(assignedToUid && assignedToUid!==currentUser.uid){
+        await createNotif(assignedToUid,{
+          type:'task_assigned',
+          title:'📋 مهمة جديدة مسندة إليك',
+          body:`"${title}" في مساحة ${currentWs.name}${due?' — الموعد: '+fmtDate(due):''}`,
+          link:{wsId:currentWs.id,taskId:id}
+        });
+      }
+      toast('تمت إضافة المهمة ✓','ok');
+    }
+    closeModal('ws-task-overlay');
+  }catch(e){toast('خطأ في الحفظ','err');setSyncStatus('error');}
+  finally{btn.disabled=false;btn.innerHTML='💾 حفظ المهمة';}
+}
+
+async function deleteWsTask(id){
+  if(!confirm('حذف هذه المهمة؟'))return;
+  setSyncStatus('syncing');
+  try{await db.collection('workspaces').doc(currentWs.id).collection('tasks').doc(id).delete();toast('تم الحذف','err');setSyncStatus('synced');}
+  catch(e){toast('خطأ','err');setSyncStatus('error');}
+}
+
+async function toggleWsTaskStatus(id){
+  const t=wsTasks.find(x=>x.id===id);
+  const cycle={pending:'wip',wip:'done',done:'pending',cancelled:'pending'};
+  const newStatus=cycle[t.status];
+  const statusAr={pending:'معلّقة',wip:'قيد التنفيذ',done:'منتهية',cancelled:'ملغية'};
+  setSyncStatus('syncing');
+  try{
+    await db.collection('workspaces').doc(currentWs.id).collection('tasks').doc(id).update({status:newStatus});
+    // إشعار: لو الشخص الذي يغيّر ليس هو المُسند إليه → أشعر المسند إليه
+    if(t.assignedToUid && t.assignedToUid!==currentUser.uid){
+      await createNotif(t.assignedToUid,{
+        type:'task_status',
+        title:'🔄 تغيّرت حالة مهمتك',
+        body:`"${t.title}" → ${statusAr[newStatus]}`,
+        link:{wsId:currentWs.id,taskId:id}
+      });
+    }
+    // إشعار: لو الموظف هو من غيّر → أشعر من أسند المهمة (لو مختلف)
+    if(t.assignedToUid===currentUser.uid && t.createdByUid && t.createdByUid!==currentUser.uid){
+      await createNotif(t.createdByUid,{
+        type:'task_status',
+        title:'✅ موظف حدّث مهمة',
+        body:`"${t.title}" → ${statusAr[newStatus]} بواسطة ${currentUser.displayName||currentUser.email}`,
+        link:{wsId:currentWs.id,taskId:id}
+      });
+    }
+    setSyncStatus('synced');
+  }
+  catch(e){setSyncStatus('error');}
+}
+
+/* ══ RENDER WORKSPACES PAGE ══ */
+function renderWorkspacesPage(){
+  // Pending invitations section
+  const invSec=document.getElementById('pending-invites-section');
+  if(pendingInvites.length>0){
+    invSec.innerHTML=`<div class="ws-section-title" style="margin-bottom:12px">🔔 دعوات معلّقة (${pendingInvites.length})</div>`+
+      pendingInvites.map(inv=>`
+        <div class="inv-card">
+          <div class="inv-avatar">🏢</div>
+          <div class="inv-info">
+            <div class="inv-title">${esc(inv.workspaceName)}</div>
+            <div class="inv-sub">دعوة من: ${esc(inv.invitedByName)}</div>
+          </div>
+          <div class="inv-actions">
+            <button class="btn btn-success btn-sm" onclick="acceptInvite('${inv.id}')">✓ قبول</button>
+            <button class="btn btn-danger btn-sm" onclick="rejectInvite('${inv.id}')">✕ رفض</button>
+          </div>
+        </div>`).join('');
+    invSec.style.marginBottom='24px';
+  }else{
+    invSec.innerHTML='';
+    invSec.style.marginBottom='0';
+  }
+  // Workspace grid
+  const grid=document.getElementById('ws-grid');
+  if(!myWorkspaces.length){
+    grid.innerHTML=`<div class="empty" style="grid-column:1/-1"><div class="ei">🏢</div><p>لا توجد مساحات مشتركة</p><small>أنشئ مساحة أو انتظر دعوة</small></div>`;
+    return;
+  }
+  grid.innerHTML=myWorkspaces.map(ws=>{
+    const myMember=ws.memberUids?.includes(currentUser.uid);
+    // We don't have members count here easily, show what we can
+    return`<div class="ws-card" onclick="openWs('${ws.id}')">
+      <div class="ws-card-name">${esc(ws.name)}</div>
+      ${ws.desc?`<div style="font-size:.75rem;color:var(--muted);margin-bottom:8px">${esc(ws.desc)}</div>`:''}
+      <div class="ws-card-meta">
+        <span>👤 ${esc(ws.ownerName||ws.ownerEmail)}</span>
+      </div>
+      <div style="font-size:.72rem;color:var(--muted);margin-bottom:12px">📅 ${new Date(ws.createdAt).toLocaleDateString('ar-EG')}</div>
+    </div>`;
+  }).join('');
+}
+
+/* ══ WORKSPACE TAB SWITCH ══ */
+function switchWsTab(tab){
+  wsCurrentTab=tab;
+  document.getElementById('wstab-tasks').classList.toggle('active',tab==='tasks');
+  document.getElementById('wstab-members').classList.toggle('active',tab==='members');
+  document.getElementById('ws-tasks-panel').style.display=tab==='tasks'?'':'none';
+  document.getElementById('ws-members-panel').style.display=tab==='members'?'':'none';
+}
+
+/* ══ RENDER WORKSPACE DETAIL ══ */
+const wsStatusLabels={pending:'معلّقة',wip:'قيد التنفيذ',done:'منتهية',cancelled:'ملغية'};
+const wsPriLabels={high:'عالية',medium:'متوسطة',low:'منخفضة'};
+const wsPriWeight={high:0,medium:1,low:2};
+
+function renderWsDetail(){
+  if(!currentWs)return;
+  document.getElementById('page-title').textContent=currentWs.name;
+  document.getElementById('ws-detail-name').textContent=currentWs.name;
+  document.getElementById('ws-detail-sub').textContent=`${wsMembers.length} أعضاء • ${wsTasks.length} مهمة`;
+  
+  const role=myRoleInWs();
+  const canManage=canManageWs();
+  
+  // Header actions
+  document.getElementById('ws-detail-actions').innerHTML=
+    `<div style="display:flex;gap:8px;align-items:center">
+      <span class="ws-role-badge ${roleClass[role]}">${roleLabels[role]||roleLabels['member']}</span>
+      ${canManage?`<button class="btn btn-ghost btn-sm" onclick="openInviteModal()">✉️ دعوة عضو</button>
+      <button class="btn btn-primary btn-sm" onclick="openWsTaskModal()">＋ إضافة مهمة</button>`:''}
+    </div>`;
+
+  // ── Tasks Panel ──
+  let list=wsTasks;
+  // If member (not manager), show only assigned tasks
+  if(!canManage){list=wsTasks.filter(t=>t.assignedToUid===currentUser.uid);}
+  
+  const tp=document.getElementById('ws-tasks-panel');
+  if(!list.length){
+    tp.innerHTML=`<div class="empty"><div class="ei">📋</div><p>${canManage?'لا توجد مهام في هذه المساحة':'لا توجد مهام مسندة إليك'}</p><small>${canManage?'أضف مهمة وعيّنها لأحد الأعضاء':''}</small></div>`;
+  }else{
+    // Manager: show member progress summary
+    let summary='';
+    if(canManage&&wsMembers.length>0){
+      summary=`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;margin-bottom:18px">
+        ${wsMembers.map(m=>{
+          const mt=wsTasks.filter(t=>t.assignedToUid===m.uid);
+          const md=mt.filter(t=>t.status==='done').length;
+          const pct=mt.length?Math.round(md/mt.length*100):0;
+          return`<div style="background:var(--s1);border:1px solid var(--border);border-radius:10px;padding:12px">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+              <div style="width:28px;height:28px;border-radius:50%;background:${m.color||'var(--accent)'};display:flex;align-items:center;justify-content:center;font-size:.65rem;font-weight:700;color:#fff;flex-shrink:0">${initials(m.displayName||m.email)}</div>
+              <div style="flex:1;min-width:0"><div style="font-size:.78rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(m.displayName||m.email)}</div>
+              <div style="font-size:.65rem;color:var(--muted)">${mt.length} مهام • ${md} منتهية</div></div>
+            </div>
+            <div class="prog-track"><div class="prog-fill" style="width:${pct}%;background:${m.color||'var(--accent)'}"></div></div>
+            <div style="font-size:.65rem;color:var(--muted);margin-top:3px;text-align:left">${pct}%</div>
+          </div>`;
+        }).join('')}
+      </div>`;
+    }
+    tp.innerHTML=summary+'<div class="tasks-list">'+list.map(t=>{
+      const ck=t.status==='done'?'✓':t.status==='cancelled'?'✕':t.status==='wip'?'►':'';
+      const dc=isOverdue(t)?'task-date overdue':'task-date';
+      const dl=t.due?`${isOverdue(t)?'⚠️ ':'📅 '}${fmtDate(t.due)}`:'';
+      const assignee=wsMembers.find(m=>m.uid===t.assignedToUid);
+      const av=assignee?`<div style="width:32px;height:32px;border-radius:50%;background:${assignee.color||'var(--accent)'};display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;color:#fff;flex-shrink:0;border:2px solid var(--border2)">${initials(assignee.displayName||assignee.email)}</div>`
+        :`<div style="width:32px;height:32px;border-radius:50%;background:var(--s3);display:flex;align-items:center;justify-content:center;font-size:.8rem;color:var(--muted);flex-shrink:0;border:2px solid var(--border)">؟</div>`;
+      const chip=assignee?`<span style="display:flex;align-items:center;gap:4px;font-size:.72rem;color:${assignee.color||'var(--accent)'};background:${(assignee.color||'#4f8ef7')}18;border:1px solid ${(assignee.color||'#4f8ef7')}40;border-radius:20px;padding:2px 8px 2px 4px"><span style="background:${assignee.color||'var(--accent)'};width:14px;height:14px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:.5rem;font-weight:700;color:#fff">${initials(assignee.displayName||assignee.email)}</span>${esc(assignee.displayName||assignee.email)}</span>`:'';
+      // Can edit/delete: manager always, member only their status
+      const canEditThis=canManage||(t.assignedToUid===currentUser.uid);
+      return`<div class="task-card" data-s="${t.status}">
+        <div class="task-check" onclick="toggleWsTaskStatus('${t.id}')">${ck}</div>
+        ${av}
+        <div class="task-body">
+          <div class="task-title">${esc(t.title)}</div>
+          ${t.desc?`<div class="task-desc">${esc(t.desc)}</div>`:''}
+          <div class="task-meta">
+            <span class="badge b-${t.status}">${wsStatusLabels[t.status]}</span>
+            <span class="badge b-${t.priority}">${wsPriLabels[t.priority]}</span>
+            ${chip}${dl?`<span class="${dc}">${dl}</span>`:''}
+            ${t.cat?`<span class="task-cat">🏷 ${esc(t.cat)}</span>`:''}
+          </div>
+        </div>
+        <div class="task-actions">
+          <button class="icon-btn" title="التعليقات" onclick="openComments('${t.id}','${currentWs.id}','${esc(t.title).slice(0,40)}')">💬</button>
+          ${canManage?`<button class="icon-btn" onclick="openWsTaskModal('${t.id}')">✏️</button><button class="icon-btn del" onclick="deleteWsTask('${t.id}')">🗑</button>`:''}
+        </div>
+      </div>`;
+    }).join('')+'</div>';
+  }
+
+  // ── Members Panel ──
+  const mp=document.getElementById('ws-members-panel');
+  const canAdmin=isSuperAdmin()||(wsMembers.find(m=>m.uid===currentUser.uid)?.role==='owner');
+  mp.innerHTML=wsMembers.map(m=>{
+    const isMe=m.uid===currentUser.uid;
+    const isOwner=m.role==='owner';
+    return`<div class="member-row">
+      <div class="member-av" style="background:${m.color||'var(--accent)'}">${initials(m.displayName||m.email)}</div>
+      <div class="member-info">
+        <div class="member-name">${esc(m.displayName||m.email)}${isMe?' (أنت)':''}</div>
+        <div class="member-email">${esc(m.email)}</div>
+      </div>
+      <div class="member-actions">
+        <span class="ws-role-badge ${roleClass[m.role]||roleClass['member']}">${roleLabels[m.role]||roleLabels['member']}</span>
+        ${canAdmin&&!isMe&&!isOwner?`
+          <select class="fselect" style="font-size:.72rem;padding:3px 8px" onchange="changeMemberRole('${m.uid}',this.value)">
+            <option value="manager" ${m.role==='manager'?'selected':''}>مدير</option>
+            <option value="member" ${m.role==='member'?'selected':''}>عضو</option>
+          </select>
+          <button class="icon-btn del btn-sm" onclick="removeMember('${m.uid}')" title="إزالة">✕</button>`:''}
+      </div>
+    </div>`;
+  }).join('')|`<div class="empty"><div class="ei">👥</div><p>لا يوجد أعضاء</p></div>`;
+  
+  // Ensure correct tab shown
+  switchWsTab(wsCurrentTab);
+}
+
+/* ══ PERSONAL TASK MODAL ══ */
+function openTaskModal(id=null,prefillDate=null){
+  editTaskId=id;populateEmpSelect('f-emp');
+  const isEdit=!!id;
+  document.getElementById('tm-icon').textContent=isEdit?'✏️':'✦';
+  document.getElementById('tm-title').textContent=isEdit?'تعديل المهمة':'إضافة مهمة جديدة';
+  if(isEdit){const t=tasks.find(x=>x.id===id);document.getElementById('f-title').value=t.title;document.getElementById('f-desc').value=t.desc||'';document.getElementById('f-emp').value=t.empId||'';document.getElementById('f-cat').value=t.cat||'';document.getElementById('f-status').value=t.status;document.getElementById('f-priority').value=t.priority;document.getElementById('f-due').value=t.due||'';document.getElementById('f-notes').value=t.notes||'';}
+  else{['f-title','f-desc','f-cat','f-notes'].forEach(i=>document.getElementById(i).value='');document.getElementById('f-emp').value='';document.getElementById('f-status').value='pending';document.getElementById('f-priority').value='medium';document.getElementById('f-due').value=prefillDate||'';}
+  openModal('task-overlay');setTimeout(()=>document.getElementById('f-title').focus(),200);
+}
+async function saveTask(){
+  const title=document.getElementById('f-title').value.trim();const desc=document.getElementById('f-desc').value.trim();const empId=document.getElementById('f-emp').value;const cat=document.getElementById('f-cat').value.trim();const status=document.getElementById('f-status').value;const priority=document.getElementById('f-priority').value;const due=document.getElementById('f-due').value;const notes=document.getElementById('f-notes').value.trim();
+  if(!title){toast('يرجى إدخال عنوان المهمة','err');return;}
+  const btn=document.getElementById('save-task-btn');btn.disabled=true;btn.textContent='⏳ جاري الحفظ...';setSyncStatus('syncing');
+  try{
+    if(editTaskId){await col('tasks').doc(editTaskId).update({title,desc,empId,cat,status,priority,due,notes});toast('تم تحديث المهمة ✓','ok');}
+    else{const id=uid();await col('tasks').doc(id).set({id,title,desc,empId,cat,status,priority,due,notes,created:Date.now()});toast('تمت إضافة المهمة ✓','ok');}
+    closeModal('task-overlay');
+  }catch(e){toast('خطأ في الحفظ','err');setSyncStatus('error');}
+  finally{btn.disabled=false;btn.innerHTML='💾 حفظ المهمة';}
+}
+
+/* ══ EMPLOYEE MODAL ══ */
+let selectedColor=COLORS[0];
+function openEmpModal(id=null){
+  editEmpId=id;document.getElementById('em-icon').textContent=id?'✏️':'👤';document.getElementById('em-title').textContent=id?'تعديل موظف':'إضافة موظف جديد';
+  if(id){const e=emps.find(x=>x.id===id);document.getElementById('ef-name').value=e.name;document.getElementById('ef-role').value=e.role||'';document.getElementById('ef-dept').value=e.dept||'';document.getElementById('ef-email').value=e.email||'';selectedColor=e.color||COLORS[0];}
+  else{['ef-name','ef-role','ef-dept','ef-email'].forEach(i=>document.getElementById(i).value='');selectedColor=COLORS[Math.floor(Math.random()*COLORS.length)];}
+  buildColorRow();openModal('emp-overlay');setTimeout(()=>document.getElementById('ef-name').focus(),200);
+}
+function buildColorRow(){document.getElementById('color-row').innerHTML=COLORS.map(c=>`<div class="color-opt ${c===selectedColor?'selected':''}" style="background:${c}" onclick="selectColor('${c}')"></div>`).join('');}
+function selectColor(c){selectedColor=c;buildColorRow();}
+async function saveEmp(){
+  const name=document.getElementById('ef-name').value.trim();const role=document.getElementById('ef-role').value.trim();const dept=document.getElementById('ef-dept').value.trim();const email=document.getElementById('ef-email').value.trim();
+  if(!name){toast('يرجى إدخال اسم الموظف','err');return;}
+  const btn=document.getElementById('save-emp-btn');btn.disabled=true;btn.textContent='⏳ جاري الحفظ...';setSyncStatus('syncing');
+  try{
+    if(editEmpId){await col('employees').doc(editEmpId).update({name,role,dept,email,color:selectedColor});toast('تم تحديث بيانات الموظف ✓','ok');}
+    else{const id=uid();await col('employees').doc(id).set({id,name,role,dept,email,color:selectedColor});toast('تمت إضافة الموظف ✓','ok');}
+    closeModal('emp-overlay');
+  }catch(e){toast('خطأ في الحفظ','err');setSyncStatus('error');}
+  finally{btn.disabled=false;btn.innerHTML='💾 حفظ الموظف';}
+}
+async function deleteEmp(id){if(!confirm('حذف هذا الموظف؟'))return;setSyncStatus('syncing');try{await col('employees').doc(id).delete();toast('تم حذف الموظف','err');}catch(e){toast('خطأ','err');setSyncStatus('error');}}
+
+/* ══ TASK DETAIL ══ */
+function openTaskDetail(id){
+  const t=tasks.find(x=>x.id===id);const emp=emps.find(e=>e.id===t.empId);
+  const sL={pending:'معلّقة',wip:'قيد التنفيذ',done:'منتهية',cancelled:'ملغية'};const pL={high:'عالية 🔴',medium:'متوسطة 🟡',low:'منخفضة 🟢'};
+  const sBg=emp?emp.color:'#4f8ef7';
+  const rows=[['الموظف المسؤول',emp?`<span style="display:flex;align-items:center;gap:7px"><span style="background:${sBg};width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:.6rem;font-weight:700;color:#fff">${initials(emp.name)}</span>${esc(emp.name)} — ${esc(emp.role||'')}</span>`:'—'],['الحالة',`<span class="badge b-${t.status}">${sL[t.status]}</span>`],['الأولوية',`<span class="badge b-${t.priority}">${pL[t.priority]}</span>`],['تاريخ الاستحقاق',t.due?fmtDate(t.due):'—'],['الفئة',t.cat||'—'],['الوصف',t.desc||'—'],['الملاحظات',t.notes||'—'],['تاريخ الإضافة',new Date(t.created).toLocaleDateString('ar-EG')]];
+  document.getElementById('detail-body').innerHTML=`<div class="detail-header"><div class="detail-av" style="background:${sBg}20;color:${sBg};font-size:1.4rem">📋</div><div><div class="detail-title">${esc(t.title)}</div>${emp?`<div style="font-size:.78rem;color:var(--muted);margin-top:4px">👤 ${esc(emp.name)}</div>`:''}</div></div>${rows.map(([k,v])=>`<div class="detail-row"><span class="detail-key">${k}</span><span class="detail-val">${v}</span></div>`).join('')}<div style="margin-top:16px;font-size:.8rem;color:var(--muted);font-weight:700">تغيير الحالة بسرعة:</div><div class="status-btns"><button class="status-btn s-pending" onclick="quickStatus('${id}','pending')">🔵 معلّقة</button><button class="status-btn s-wip" onclick="quickStatus('${id}','wip')">🟠 قيد التنفيذ</button><button class="status-btn s-done" onclick="quickStatus('${id}','done')">🟢 منتهية</button><button class="status-btn s-cancel" onclick="quickStatus('${id}','cancelled')">🔴 ملغية</button></div>`;
+  document.getElementById('detail-foot').innerHTML=`<button class="btn btn-ghost" onclick="closeModal('detail-overlay')">إغلاق</button><button class="btn btn-danger" onclick="deleteTask('${id}');closeModal('detail-overlay')">🗑 حذف</button><button class="btn btn-primary" onclick="closeModal('detail-overlay');openTaskModal('${id}')">✏️ تعديل</button>`;
+  openModal('detail-overlay');
+}
+async function quickStatus(id,status){setSyncStatus('syncing');try{await col('tasks').doc(id).update({status});closeModal('detail-overlay');toast('تم تغيير الحالة ✓','ok');}catch(e){toast('خطأ','err');setSyncStatus('error');}}
+async function deleteTask(id){if(!confirm('حذف هذه المهمة نهائياً؟'))return;setSyncStatus('syncing');try{await col('tasks').doc(id).delete();toast('تم الحذف','err');}catch(e){toast('خطأ','err');setSyncStatus('error');}}
+async function toggleStatus(id){const t=tasks.find(x=>x.id===id);const cycle={pending:'wip',wip:'done',done:'pending',cancelled:'pending'};setSyncStatus('syncing');try{await col('tasks').doc(id).update({status:cycle[t.status]});}catch(e){setSyncStatus('error');}}
+
+/* ══ RENDER TASKS ══ */
+const statusLabels={pending:'معلّقة',wip:'قيد التنفيذ',done:'منتهية',cancelled:'ملغية'};
+const priWeight={high:0,medium:1,low:2};const priLabels={high:'عالية',medium:'متوسطة',low:'منخفضة'};
+function renderTasks(){
+  const search=document.getElementById('search-input').value.toLowerCase();const empFilt=document.getElementById('filter-emp').value;const sort=document.getElementById('sort-sel').value;
+  let list=tasks.filter(t=>{if(currentFilter==='overdue')return isOverdue(t);if(currentFilter!=='all'&&t.status!==currentFilter)return false;if(empFilt&&t.empId!==empFilt)return false;if(search){const emp=empById(t.empId);return t.title.toLowerCase().includes(search)||(t.desc||'').toLowerCase().includes(search)||(t.cat||'').toLowerCase().includes(search)||(emp&&emp.name.toLowerCase().includes(search));}return true;});
+  list.sort((a,b)=>{if(sort==='created')return b.created-a.created;if(sort==='due')return(a.due||'9999')<(b.due||'9999')?-1:1;if(sort==='priority')return priWeight[a.priority]-priWeight[b.priority];if(sort==='emp')return(empById(a.empId)?.name||'').localeCompare(empById(b.empId)?.name||'','ar');return 0;});
+  const oc=tasks.filter(isOverdue).length;
+  document.getElementById('overdue-banner').innerHTML=oc>0&&currentFilter!=='overdue'?`<div class="overdue-banner">⚠️ <strong>${oc} مهمة متأخرة</strong> تجاوزت تاريخ الاستحقاق <button class="btn btn-danger" style="margin-right:auto;padding:4px 10px;font-size:.75rem" onclick="quickFilter('overdue')">عرضها</button></div>`:'';
+  const c=document.getElementById('tasks-container');
+  if(!list.length){c.innerHTML=`<div class="empty"><div class="ei">📭</div><p>لا توجد مهام</p><small>أضف مهمة جديدة أو غيّر الفلتر</small></div>`;return;}
+  c.innerHTML=list.map(t=>{const emp=empById(t.empId);const av=emp?`<div style="width:32px;height:32px;border-radius:50%;background:${emp.color};display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;color:#fff;flex-shrink:0;border:2px solid var(--border2)">${initials(emp.name)}</div>`:`<div style="width:32px;height:32px;border-radius:50%;background:var(--s3);display:flex;align-items:center;justify-content:center;font-size:.8rem;color:var(--muted);flex-shrink:0;border:2px solid var(--border)">؟</div>`;const empChip=emp?`<span style="display:flex;align-items:center;gap:4px;font-size:.72rem;color:${emp.color};background:${emp.color}18;border:1px solid ${emp.color}40;border-radius:20px;padding:2px 8px 2px 4px"><span style="background:${emp.color};width:14px;height:14px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:.5rem;font-weight:700;color:#fff">${initials(emp.name)}</span>${esc(emp.name)}</span>`:'';const ck=t.status==='done'?'✓':t.status==='cancelled'?'✕':t.status==='wip'?'►':'';const dc=isOverdue(t)?'task-date overdue':'task-date';const dl=t.due?`${isOverdue(t)?'⚠️ ':'📅 '}${fmtDate(t.due)}`:'';return`<div class="task-card" data-s="${t.status}"><div class="task-check" onclick="toggleStatus('${t.id}')">${ck}</div>${av}<div class="task-body"><div class="task-title">${esc(t.title)}</div>${t.desc?`<div class="task-desc">${esc(t.desc)}</div>`:''}<div class="task-meta"><span class="badge b-${t.status}">${statusLabels[t.status]}</span><span class="badge b-${t.priority}">${priLabels[t.priority]}</span>${empChip}${dl?`<span class="${dc}">${dl}</span>`:''}${t.cat?`<span class="task-cat">🏷 ${esc(t.cat)}</span>`:''}</div></div><div class="task-actions"><button class="icon-btn" title="التعليقات" onclick="openComments('${t.id}',null,'${esc(t.title).slice(0,40)}')">💬</button><button class="icon-btn" onclick="openTaskDetail('${t.id}')">👁</button><button class="icon-btn" onclick="openTaskModal('${t.id}')">✏️</button><button class="icon-btn del" onclick="deleteTask('${t.id}')">🗑</button></div></div>`;}).join('');
+}
+
+/* ══ RENDER EMPLOYEES ══ */
+function renderEmps(){
+  const g=document.getElementById('emp-grid');
+  if(!emps.length){g.innerHTML=`<div class="empty" style="grid-column:1/-1"><div class="ei">👥</div><p>لا يوجد موظفون</p><small>أضف موظفاً للبدء</small></div>`;return;}
+  g.innerHTML=emps.map(e=>{const et=tasks.filter(t=>t.empId===e.id);const done=et.filter(t=>t.status==='done').length;const wip=et.filter(t=>t.status==='wip').length;const total=et.length;const pct=total?Math.round(done/total*100):0;return`<div class="emp-card"><div class="emp-card-top"><div class="emp-av-lg" style="background:${e.color}25;color:${e.color}">${initials(e.name)}</div><div><div class="emp-name">${esc(e.name)}</div><div class="emp-role">${esc(e.role||'—')}</div>${e.dept?`<div class="emp-dept"><span>${esc(e.dept)}</span></div>`:''}</div></div><div class="emp-stats"><div class="emp-stat"><div class="emp-stat-num">${total}</div><div class="emp-stat-lbl">مهام</div></div><div class="emp-stat"><div class="emp-stat-num" style="color:var(--done)">${done}</div><div class="emp-stat-lbl">منتهية</div></div><div class="emp-stat"><div class="emp-stat-num" style="color:var(--wip)">${wip}</div><div class="emp-stat-lbl">تنفيذ</div></div></div><div style="display:flex;justify-content:space-between;font-size:.72rem;margin-bottom:4px"><span style="color:var(--muted)">نسبة الإنجاز</span><span style="color:${e.color};font-weight:700">${pct}%</span></div><div class="prog-track"><div class="prog-fill" style="width:${pct}%;background:${e.color}"></div></div>${e.email?`<div style="font-size:.72rem;color:var(--muted);margin-top:8px">📧 ${esc(e.email)}</div>`:''}<div class="emp-actions"><button class="btn btn-ghost" style="flex:1;font-size:.78rem" onclick="empTaskFilter('${e.id}')">📋 مهامه</button><button class="icon-btn" onclick="openEmpModal('${e.id}')">✏️</button><button class="icon-btn del" onclick="deleteEmp('${e.id}')">🗑</button></div></div>`;}).join('');
+}
+function empTaskFilter(empId){document.getElementById('filter-emp').value=empId;currentFilter='all';goPage('tasks');}
+
+/* ══ RENDER DASHBOARD ══ */
+function renderDash(){
+  const cnt={all:tasks.length,wip:0,done:0,pending:0,cancelled:0,overdue:0};tasks.forEach(t=>{cnt[t.status]++;if(isOverdue(t))cnt.overdue++;});
+  document.getElementById('ds-all').textContent=cnt.all;document.getElementById('ds-wip').textContent=cnt.wip;document.getElementById('ds-done').textContent=cnt.done;document.getElementById('ds-overdue').textContent=cnt.overdue;
+  const pct=s=>cnt.all?Math.round(cnt[s]/cnt.all*100):0;
+  document.getElementById('dash-prog').innerHTML=[{label:'معلّقة',val:cnt.pending,pct:pct('pending'),color:'var(--pending)'},{label:'قيد التنفيذ',val:cnt.wip,pct:pct('wip'),color:'var(--wip)'},{label:'منتهية',val:cnt.done,pct:pct('done'),color:'var(--done)'},{label:'ملغية',val:cnt.cancelled,pct:pct('cancelled'),color:'var(--cancel)'}].map(b=>`<div class="prog-item"><div class="prog-label"><span>${b.label}</span><span>${b.val} (${b.pct}%)</span></div><div class="prog-track"><div class="prog-fill" style="width:${b.pct}%;background:${b.color}"></div></div></div>`).join('');
+  const es=emps.map(e=>{const et=tasks.filter(t=>t.empId===e.id);return{e,done:et.filter(t=>t.status==='done').length,total:et.length};}).sort((a,b)=>b.done-a.done).slice(0,5);
+  document.getElementById('dash-leaders').innerHTML=es.length?es.map((x,i)=>`<div class="leader-item"><span class="leader-rank">${i+1}</span><div class="leader-av" style="background:${x.e.color}">${initials(x.e.name)}</div><div class="leader-info"><div class="leader-name">${esc(x.e.name)}</div><div class="leader-tasks">${x.total} مهمة</div></div><span class="leader-done">${x.done} ✓</span></div>`).join(''):`<div class="empty" style="padding:20px"><div class="ei" style="font-size:1.5rem">👥</div><p style="font-size:.8rem">لا يوجد موظفون</p></div>`;
+  const rec=[...tasks].sort((a,b)=>b.created-a.created).slice(0,5);
+  document.getElementById('dash-recent').innerHTML=rec.length?rec.map(t=>{const emp=empById(t.empId);return`<div class="leader-item">${emp?`<div style="width:26px;height:26px;border-radius:50%;background:${emp.color};display:flex;align-items:center;justify-content:center;font-size:.6rem;font-weight:700;color:#fff;flex-shrink:0">${initials(emp.name)}</div>`:`<div style="width:26px;height:26px;border-radius:50%;background:var(--s3);display:flex;align-items:center;justify-content:center;color:var(--muted)">؟</div>`}<div class="leader-info"><div class="leader-name" style="font-size:.8rem">${esc(t.title)}</div>${emp?`<div class="leader-tasks">${esc(emp.name)}</div>`:''}</div><span class="badge b-${t.status}" style="font-size:.65rem">${statusLabels[t.status]}</span></div>`;}).join(''):`<div class="empty" style="padding:20px"><div class="ei" style="font-size:1.5rem">📭</div><p style="font-size:.8rem">لا توجد مهام</p></div>`;
+  const soon=tasks.filter(t=>t.due&&t.due>=todayStr&&t.status!=='done'&&t.status!=='cancelled').sort((a,b)=>a.due<b.due?-1:1).slice(0,5);
+  document.getElementById('dash-upcoming').innerHTML=soon.length?soon.map(t=>{const emp=empById(t.empId);const dl=Math.ceil((new Date(t.due)-_today)/(1000*86400));return`<div class="leader-item"><div style="width:42px;text-align:center;flex-shrink:0"><div style="font-size:.8rem;font-weight:900;color:${dl<=2?'var(--cancel)':'var(--text)'}">${dl}</div><div style="font-size:.62rem;color:var(--muted)">يوم</div></div><div class="leader-info"><div class="leader-name" style="font-size:.8rem">${esc(t.title)}</div>${emp?`<div class="leader-tasks">${esc(emp.name)}</div>`:`<div class="leader-tasks" style="color:var(--muted)">غير محدد</div>`}</div><span class="badge b-${t.status}" style="font-size:.65rem">${statusLabels[t.status]}</span></div>`;}).join(''):`<div class="empty" style="padding:20px"><div class="ei" style="font-size:1.5rem">🎉</div><p style="font-size:.8rem">لا توجد مهام قادمة</p></div>`;
+}
+
+/* ══ RENDER CALENDAR ══ */
+const arMonths=['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+function changeMonth(d){calMonth+=d;if(calMonth>11){calMonth=0;calYear++;}if(calMonth<0){calMonth=11;calYear--;}renderCal();}
+function renderCal(){
+  document.getElementById('cal-label').textContent=`${arMonths[calMonth]} ${calYear}`;
+  const first=new Date(calYear,calMonth,1).getDay(),days=new Date(calYear,calMonth+1,0).getDate(),prev=new Date(calYear,calMonth,0).getDate();
+  const tm={};tasks.forEach(t=>{if(t.due)(tm[t.due]=tm[t.due]||[]).push(t);});
+  let html='';
+  for(let i=0;i<42;i++){let day,m=calMonth,y=calYear,other=false;if(i<first){day=prev-first+i+1;m=calMonth-1;if(m<0){m=11;y--;}other=true;}else if(i-first>=days){day=i-first-days+1;m=calMonth+1;if(m>11){m=0;y++;}other=true;}else day=i-first+1;const ds=`${y}-${String(m+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;const isT=ds===todayStr&&!other;const dt=(tm[ds]||[]).slice(0,3);const more=(tm[ds]||[]).length>3?`<div class="cal-dot cd-pending">+${(tm[ds].length-3)} أخرى</div>`:'';html+=`<div class="cal-cell ${other?'other':''} ${isT?'today':''}" onclick="calClick('${ds}')"><div class="cal-num">${day}</div>${dt.map(t=>{const cls={pending:'cd-pending',wip:'cd-wip',done:'cd-done',cancelled:'cd-cancelled'};return`<div class="cal-dot ${cls[t.status]}" onclick="event.stopPropagation();openTaskDetail('${t.id}')">${esc(t.title)}</div>`;}).join('')}${more}</div>`;}
+  document.getElementById('cal-body').innerHTML=html;
+}
+function calClick(ds){openTaskModal(null,ds);}
+
+/* ══ COUNTS & SELECTS ══ */
+function renderCounts(){
+  const cnt={all:tasks.length,pending:0,wip:0,done:0,cancelled:0,overdue:0};tasks.forEach(t=>{cnt[t.status]++;if(isOverdue(t))cnt.overdue++;});
+  ['all','pending','wip','done','overdue'].forEach(k=>{const el=document.getElementById('nb-'+k);if(el)el.textContent=cnt[k];});
+  document.getElementById('nb-emps').textContent=emps.length;
+  // Bottom nav
+  const bt=document.getElementById('bnav-badge-tasks');if(bt){if(cnt.all>0){bt.textContent=cnt.all;bt.classList.add('show');}else bt.classList.remove('show');}
+  const sel=document.getElementById('filter-emp');const cur=sel.value;
+  sel.innerHTML=`<option value="">كل الموظفين</option>`+emps.map(e=>`<option value="${e.id}" ${cur===e.id?'selected':''}>${esc(e.name)}</option>`).join('');
+}
+function setFilter(f){currentFilter=f;syncPills();renderTasks();}
+function syncPills(){document.querySelectorAll('.pill').forEach(el=>{el.classList.remove('active');if(el.dataset.f===currentFilter)el.classList.add('active');});}
+function populateEmpSelect(id){const sel=document.getElementById(id);const cur=sel.value;sel.innerHTML=`<option value="">— اختر موظفاً —</option>`+emps.map(e=>`<option value="${e.id}" ${cur===e.id?'selected':''}>${esc(e.name)}${e.role?' — '+esc(e.role):''}</option>`).join('');}
+function renderAll(){renderCounts();if(currentPage==='dash')renderDash();if(currentPage==='tasks')renderTasks();if(currentPage==='emps')renderEmps();if(currentPage==='cal')renderCal();}
+
+/* ══ NOTIFICATIONS ══ */
+let notifications=[];
+let notifPanelOpen=false;
+
+function startNotifListener(){
+  if(unsubNotifs){unsubNotifs();unsubNotifs=null;}
+  unsubNotifs=db.collection('users').doc(currentUser.uid).collection('notifications')
+    .orderBy('createdAt','desc').limit(50)
+    .onSnapshot(snap=>{
+      notifications=snap.docs.map(d=>({...d.data(),id:d.id}));
+      updateNotifBadge();
+      if(notifPanelOpen) renderNotifPanel();
+    },err=>console.warn('notif listener:',err));
+}
+
+function updateNotifBadge(){
+  const unread=notifications.filter(n=>!n.read).length;
+  const btn=document.getElementById('notif-btn');
+  const cnt=document.getElementById('notif-count');
+  if(btn&&cnt){
+    if(unread>0){cnt.textContent=unread>99?'99+':unread;cnt.style.display='flex';btn.classList.add('has-new');}
+    else{cnt.style.display='none';btn.classList.remove('has-new');}
+  }
+  // Bottom nav badge
+  const bb=document.getElementById('bnav-badge-notif');
+  if(bb){if(unread>0){bb.textContent=unread>99?'99+':unread;bb.classList.add('show');}else{bb.classList.remove('show');}}
+  // WS badge
+  const wb=document.getElementById('bnav-badge-ws');
+  if(wb){const n=pendingInvites.length;if(n>0){wb.textContent=n;wb.classList.add('show');}else wb.classList.remove('show');}
+}
+
+function toggleNotifPanel(){
+  notifPanelOpen=!notifPanelOpen;
+  document.getElementById('notif-panel-wrap').style.display=notifPanelOpen?'block':'none';
+  const panel=document.getElementById('notif-panel');
+  panel.style.display=notifPanelOpen?'flex':'none';
+  if(notifPanelOpen) renderNotifPanel();
+}
+
+function closeNotifPanel(){
+  notifPanelOpen=false;
+  document.getElementById('notif-panel-wrap').style.display='none';
+  document.getElementById('notif-panel').style.display='none';
+}
+
+function renderNotifPanel(){
+  const panel=document.getElementById('notif-panel');
+  panel.className='notif-panel';
+  const unread=notifications.filter(n=>!n.read).length;
+  const items=notifications.length?notifications.map(n=>{
+    const icons={task_assigned:'📋',task_status:'🔄',task_updated:'📝',ws_invite:'🏢'};
+    const bgs={task_assigned:'rgba(79,142,247,.15)',task_status:'rgba(0,200,150,.15)',task_updated:'rgba(247,162,62,.15)',ws_invite:'rgba(124,92,228,.15)'};
+    const ago=timeAgo(n.createdAt);
+    return`<div class="notif-item ${n.read?'':'unread'}" onclick="handleNotifClick('${n.id}')">
+      ${!n.read?'<div class="unread-dot"></div>':'<div style="width:7px;flex-shrink:0"></div>'}
+      <div class="notif-ico" style="background:${bgs[n.type]||'rgba(79,142,247,.15)'}">${icons[n.type]||'🔔'}</div>
+      <div class="notif-content">
+        <div class="notif-ntitle">${esc(n.title)}</div>
+        <div class="notif-nbody">${esc(n.body)}</div>
+        <div class="notif-ntime">${ago}</div>
+      </div>
+    </div>`;
+  }).join(''):`<div class="notif-empty-state"><div class="nei">🔔</div><p>لا توجد إشعارات</p></div>`;
+
+  panel.innerHTML=`
+    <div class="notif-head">
+      <span class="notif-head-title">الإشعارات ${unread>0?`<span style="font-size:.7rem;color:var(--muted);font-weight:400">(${unread} غير مقروء)</span>`:''}
+      </span>
+      ${unread>0?`<button class="notif-mark-all" onclick="markAllRead()">قراءة الكل ✓</button>`:''}
+    </div>
+    <div class="notif-body">${items}</div>`;
+}
+
+async function handleNotifClick(id){
+  const n=notifications.find(x=>x.id===id);
+  if(!n)return;
+  // Mark as read
+  if(!n.read){
+    try{await db.collection('users').doc(currentUser.uid).collection('notifications').doc(id).update({read:true});}
+    catch(e){}
+  }
+  // Navigate
+  if(n.link?.wsId){
+    const ws=myWorkspaces.find(w=>w.id===n.link.wsId);
+    if(ws){closeNotifPanel();openWs(n.link.wsId);}
+  }
+  closeNotifPanel();
+}
+
+async function markAllRead(){
+  const unreadIds=notifications.filter(n=>!n.read).map(n=>n.id);
+  if(!unreadIds.length)return;
+  try{
+    const batch=db.batch();
+    unreadIds.forEach(id=>batch.update(db.collection('users').doc(currentUser.uid).collection('notifications').doc(id),{read:true}));
+    await batch.commit();
+  }catch(e){console.warn('markAllRead:',e);}
+}
+
+// Helper: create notification for another user
+async function createNotif(targetUid, {type,title,body,link={}}){
+  if(!targetUid||targetUid===currentUser.uid)return; // لا ترسل لنفسك
+  try{
+    const id=uid();
+    await db.collection('users').doc(targetUid).collection('notifications').doc(id).set({
+      id,type,title,body,link,read:false,
+      createdAt:Date.now(),
+      fromUid:currentUser.uid,
+      fromName:currentUser.displayName||currentUser.email
+    });
+  }catch(e){console.warn('createNotif failed:',e);}
+}
+
+// Helper: relative time
+function timeAgo(ts){
+  const diff=Date.now()-ts;
+  const m=Math.floor(diff/60000);
+  const h=Math.floor(diff/3600000);
+  const d=Math.floor(diff/86400000);
+  if(m<1)return'الآن';
+  if(m<60)return`منذ ${m} دقيقة`;
+  if(h<24)return`منذ ${h} ساعة`;
+  if(d<7)return`منذ ${d} أيام`;
+  return new Date(ts).toLocaleDateString('ar-EG');
+}
+
+/* ══ PRESENCE TRACKING ══ */
+let presenceInterval=null;
+let unsubAdminUsers=null;
+let allUserProfiles=[];
+let broadcastTargets=[];
+
+async function updatePresence(online){
+  if(!currentUser)return;
+  try{
+    const data={
+      uid:currentUser.uid,
+      email:currentUser.email,
+      displayName:currentUser.displayName||currentUser.email,
+      isOnline:online,
+      lastSeen:Date.now()
+    };
+    if(online) data.lastLogin=Date.now();
+    else        data.lastLogout=Date.now();
+    await db.collection('userProfiles').doc(currentUser.uid).set(data,{merge:true});
+    // حفظ جلسة كاملة عند الدخول فقط
+    if(online){
+      const sId=uid();
+      await db.collection('userProfiles').doc(currentUser.uid).collection('sessions').doc(sId).set({
+        id:sId,action:'login',timestamp:Date.now(),
+        email:currentUser.email,name:currentUser.displayName||currentUser.email
+      });
+    }
+  }catch(e){console.warn('presence update failed:',e);}
+}
+
+function startPresenceTracking(){
+  updatePresence(true);
+  // Heartbeat every 90 seconds
+  presenceInterval=setInterval(()=>{if(currentUser)updatePresence(true);},90000);
+  // Mark offline on page hide
+  document.addEventListener('visibilitychange',()=>{
+    if(!currentUser)return;
+    if(document.visibilityState==='hidden') updatePresence(false);
+    else updatePresence(true);
+  },{once:false});
+  // Mark offline on page unload
+  window.addEventListener('beforeunload',()=>{
+    if(currentUser) updatePresence(false);
+  });
+  // Start admin listener if super admin
+  if(currentUser.email===SUPER_ADMIN) startAdminListener();
+}
+
+function startAdminListener(){
+  if(unsubAdminUsers){unsubAdminUsers();unsubAdminUsers=null;}
+  unsubAdminUsers=db.collection('userProfiles').onSnapshot(snap=>{
+    allUserProfiles=snap.docs.map(d=>({...d.data(),uid:d.id}));
+    const online=allUserProfiles.filter(u=>u.isOnline).length;
+    // Update admin stat cards
+    ['adm-online','adm-total'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=id==='adm-online'?online:allUserProfiles.length;});
+    const nbOnline=document.getElementById('nb-online');if(nbOnline)nbOnline.textContent=online;
+    document.getElementById('adm-ws').textContent=myWorkspaces.length;
+    document.getElementById('adm-tasks').textContent=tasks.length;
+    if(currentPage==='admin') renderAdminUsers();
+    populateBroadcastSelect();
+  },err=>console.warn('adminListener:',err));
+}
+
+/* ══ ADMIN PANEL RENDER ══ */
+function renderAdminPanel(){
+  if(!isSuperAdmin()){document.getElementById('page-admin').innerHTML='<div class="empty"><div class="ei">🚫</div><p>غير مصرح</p></div>';return;}
+  const online=allUserProfiles.filter(u=>u.isOnline).length;
+  const el1=document.getElementById('adm-online');if(el1)el1.textContent=online;
+  const el2=document.getElementById('adm-total');if(el2)el2.textContent=allUserProfiles.length;
+  const el3=document.getElementById('adm-ws');if(el3)el3.textContent=myWorkspaces.length;
+  const el4=document.getElementById('adm-tasks');if(el4)el4.textContent=tasks.length;
+  renderAdminUsers();
+  renderAdminSessions();
+  populateBroadcastSelect();
+}
+
+function renderAdminUsers(){
+  const q=(document.getElementById('admin-search')?.value||'').toLowerCase();
+  const list=document.getElementById('admin-users-list');
+  if(!list)return;
+  let users=allUserProfiles.filter(u=>u.uid!==currentUser.uid);
+  if(q) users=users.filter(u=>(u.displayName+u.email).toLowerCase().includes(q));
+  if(!users.length){list.innerHTML='<div class="empty" style="padding:30px"><div class="ei" style="font-size:1.8rem">👥</div><p style="font-size:.82rem">لا يوجد مستخدمون مسجلون</p></div>';return;}
+  list.innerHTML=users.map(u=>{
+    const color=u.color||COLORS[Math.abs(u.uid.charCodeAt(0))%COLORS.length];
+    const onlineAgo=u.lastSeen?timeAgo(u.lastSeen):'';
+    const loginTime=u.lastLogin?new Date(u.lastLogin).toLocaleString('ar-EG'):'—';
+    const logoutTime=u.lastLogout?new Date(u.lastLogout).toLocaleString('ar-EG'):'—';
+    // Find role in any shared workspace
+    const wsRole=myWorkspaces.reduce((acc,ws)=>{
+      if(ws.memberUids?.includes(u.uid)) acc.push(ws.name);
+      return acc;
+    },[]);
+    return`<div class="admin-user-row">
+      <div class="admin-user-av" style="background:${color}">
+        ${initials(u.displayName||u.email)}
+        <div class="presence-dot ${u.isOnline?'online':'offline'}"></div>
+      </div>
+      <div class="admin-user-info">
+        <div class="admin-user-name">${esc(u.displayName||u.email)}</div>
+        <div class="admin-user-email">${esc(u.email)}</div>
+        <div class="admin-user-meta">
+          <span>🔑 آخر دخول: ${loginTime}</span>
+          ${u.lastLogout?`<span>🚪 آخر خروج: ${logoutTime}</span>`:''}
+          ${wsRole.length?`<span>🏢 ${wsRole.join(', ')}</span>`:''}
+        </div>
+      </div>
+      <div class="admin-user-actions">
+        <span class="online-badge ${u.isOnline?'on':'off'}">${u.isOnline?'🟢 متصل':'⚫ غير متصل'}</span>
+        ${u.isOnline?`<span style="font-size:.65rem;color:var(--muted)">${onlineAgo}</span>`:`<span style="font-size:.65rem;color:var(--muted)">${onlineAgo}</span>`}
+        <button class="btn btn-ghost btn-sm" style="font-size:.72rem" onclick="quickNotifUser('${u.uid}','${esc(u.displayName||u.email)}')">🔔</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function renderAdminSessions(){
+  const list=document.getElementById('admin-sessions-list');
+  if(!list)return;
+  try{
+    // Get last 20 sessions across all users (each user's subcollection - we load from all profiles)
+    let sessions=[];
+    for(const u of allUserProfiles.slice(0,20)){
+      try{
+        const snap=await db.collection('userProfiles').doc(u.uid).collection('sessions').orderBy('timestamp','desc').limit(3).get();
+        snap.docs.forEach(d=>sessions.push({...d.data(),userEmail:u.email,userName:u.displayName||u.email,userColor:u.color||COLORS[0]}));
+      }catch(e){}
+    }
+    sessions.sort((a,b)=>b.timestamp-a.timestamp);
+    sessions=sessions.slice(0,30);
+    if(!sessions.length){list.innerHTML='<div class="empty" style="padding:20px"><p style="font-size:.8rem">لا توجد جلسات بعد</p></div>';return;}
+    list.innerHTML=sessions.map(s=>`
+      <div class="session-row">
+        <span class="si">🔑</span>
+        <div style="font-size:.72rem;font-weight:700;width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(s.userName)}</div>
+        <div style="font-size:.68rem;color:var(--muted);flex:1">${new Date(s.timestamp).toLocaleString('ar-EG')}</div>
+        <span style="font-size:.65rem;color:var(--muted)">${timeAgo(s.timestamp)}</span>
+      </div>`).join('');
+  }catch(e){list.innerHTML='<div class="empty" style="padding:20px"><p style="font-size:.75rem;color:var(--cancel)">خطأ في تحميل الجلسات</p></div>';}
+}
+
+/* ══ BROADCAST NOTIFICATIONS ══ */
+function populateBroadcastSelect(){
+  const sel=document.getElementById('broadcast-user-select');
+  if(!sel)return;
+  const cur=sel.value;
+  sel.innerHTML=`<option value="">+ إضافة مستخدم...</option>`+
+    allUserProfiles.filter(u=>u.uid!==currentUser.uid&&!broadcastTargets.find(t=>t.uid===u.uid))
+      .map(u=>`<option value="${u.uid}">${esc(u.displayName||u.email)}</option>`).join('');
+}
+
+function addBroadcastTarget(sel){
+  const uid=sel.value;
+  if(!uid){return;}
+  const u=allUserProfiles.find(x=>x.uid===uid);
+  if(!u||broadcastTargets.find(t=>t.uid===uid))return;
+  broadcastTargets.push({uid:u.uid,name:u.displayName||u.email,color:u.color||COLORS[0]});
+  renderBroadcastChips();
+  sel.value='';
+  populateBroadcastSelect();
+}
+
+function removeBroadcastTarget(uid){
+  broadcastTargets=broadcastTargets.filter(t=>t.uid!==uid);
+  renderBroadcastChips();
+  populateBroadcastSelect();
+}
+
+function selectAllBroadcast(){
+  broadcastTargets=allUserProfiles.filter(u=>u.uid!==currentUser.uid).map(u=>({uid:u.uid,name:u.displayName||u.email,color:u.color||COLORS[0]}));
+  renderBroadcastChips();
+  populateBroadcastSelect();
+}
+
+function clearBroadcastTargets(){
+  broadcastTargets=[];
+  renderBroadcastChips();
+  populateBroadcastSelect();
+}
+
+function renderBroadcastChips(){
+  const wrap=document.getElementById('broadcast-targets');
+  if(!wrap)return;
+  const sel=document.getElementById('broadcast-user-select');
+  wrap.innerHTML='';
+  broadcastTargets.forEach(t=>{
+    const chip=document.createElement('div');
+    chip.className='target-chip';
+    chip.style.background=t.color;
+    chip.innerHTML=`<span>${esc(t.name)}</span><span class="tc-remove" onclick="removeBroadcastTarget('${t.uid}')">✕</span>`;
+    wrap.appendChild(chip);
+  });
+  wrap.appendChild(sel||document.createElement('select'));
+}
+
+async function sendBroadcast(){
+  if(!broadcastTargets.length){toast('اختر مستخدماً على الأقل','err');return;}
+  const title=document.getElementById('broadcast-title').value.trim();
+  const msg=document.getElementById('broadcast-msg').value.trim();
+  if(!title||!msg){toast('يرجى إدخال العنوان والنص','err');return;}
+  setSyncStatus('syncing');
+  try{
+    const batch=db.batch();
+    broadcastTargets.forEach(t=>{
+      const nId=uid();
+      batch.set(db.collection('users').doc(t.uid).collection('notifications').doc(nId),{
+        id:nId,type:'admin_broadcast',
+        title:`📣 ${title}`,body:msg,
+        link:{},read:false,createdAt:Date.now(),
+        fromUid:currentUser.uid,fromName:'المدير العام 👑'
+      });
+    });
+    await batch.commit();
+    document.getElementById('broadcast-title').value='';
+    document.getElementById('broadcast-msg').value='';
+    clearBroadcastTargets();
+    toast(`تم إرسال الإشعار لـ ${broadcastTargets.length||'الكل'} مستخدم ✓`,'ok');
+    setSyncStatus('synced');
+  }catch(e){toast('خطأ في الإرسال: '+e.message,'err');setSyncStatus('error');}
+}
+
+// Quick notify single user from user list
+function quickNotifUser(targetUid,targetName){
+  broadcastTargets=[{uid:targetUid,name:targetName,color:COLORS[2]}];
+  renderBroadcastChips();
+  document.getElementById('broadcast-title').focus();
+  // Scroll to broadcast section
+  document.querySelector('#page-admin .admin-section').scrollIntoView({behavior:'smooth'});
+}
+
+// Change role in workspace from admin panel
+async function adminSetWsRole(wsId,memberUid,newRole){
+  setSyncStatus('syncing');
+  try{
+    await db.collection('workspaces').doc(wsId).collection('members').doc(memberUid).update({role:newRole});
+    toast('تم تغيير الدور ✓','ok');setSyncStatus('synced');
+  }catch(e){toast('خطأ','err');setSyncStatus('error');}
+}
+
+/* ══ TOAST ══ */
+function toast(msg,type='inf'){const icons={ok:'✅',err:'❌',inf:'ℹ️'};const el=document.createElement('div');el.className=`toast ${type}`;el.innerHTML=`<span>${icons[type]}</span>${msg}`;document.getElementById('toast-box').appendChild(el);setTimeout(()=>el.remove(),2800);}
+
+/* ══ KEYBOARD ══ */
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape')['task-overlay','emp-overlay','detail-overlay','ws-create-overlay','invite-overlay','ws-task-overlay'].forEach(id=>closeModal(id));
+  if(document.getElementById('auth-screen').style.display!=='none'&&e.key==='Enter'){if(document.getElementById('auth-reset-card').style.display!=='none')doReset();else if(document.getElementById('panel-login').classList.contains('active'))doLogin();else doRegister();}
+  if((e.ctrlKey||e.metaKey)&&e.key==='n'){e.preventDefault();if(currentPage==='ws-detail'&&canManageWs())openWsTaskModal();else openTaskModal();}
+});
+
+/* ══ COMMENTS SYSTEM ══ */
+let commentsTaskId=null,commentsWsId=null,unsubComments=null,commentsList=[];
+
+function openComments(taskId,wsId=null,taskTitle=''){
+  commentsTaskId=taskId;commentsWsId=wsId;commentsList=[];
+  document.getElementById('comments-modal-title').innerHTML=`💬 التعليقات — <span style="font-size:.85rem;color:var(--muted);font-weight:600">${esc(taskTitle)}</span>`;
+  document.getElementById('comment-input').value='';
+  document.getElementById('comment-list').innerHTML='<div class="comment-empty">جاري التحميل...</div>';
+  if(unsubComments){unsubComments();unsubComments=null;}
+  const colRef=wsId
+    ?db.collection('workspaces').doc(wsId).collection('tasks').doc(taskId).collection('comments')
+    :col('tasks').doc(taskId).collection('comments');
+  unsubComments=colRef.orderBy('createdAt','asc').onSnapshot(snap=>{
+    commentsList=snap.docs.map(d=>({...d.data(),id:d.id}));
+    renderComments();
+  },()=>{document.getElementById('comment-list').innerHTML='<div class="comment-empty">خطأ في التحميل</div>';});
+  openModal('comments-overlay');
+  setTimeout(()=>document.getElementById('comment-input').focus(),300);
+}
+
+function renderComments(){
+  const list=document.getElementById('comment-list');
+  if(!commentsList.length){list.innerHTML='<div class="comment-empty">لا توجد تعليقات — كن أول من يعلّق! 💬</div>';return;}
+  const palette=['#4f8ef7','#7c5ce4','#00c896','#f7a23e','#ff5c7a','#fd79a8','#a29bfe','#38d9a9'];
+  const colorMap={};let ci=0;
+  commentsList.forEach(c=>{
+    if(!colorMap[c.authorUid]){const m=wsMembers.find(x=>x.uid===c.authorUid);colorMap[c.authorUid]=m?.color||palette[ci++%palette.length];}
+  });
+  list.innerHTML=commentsList.map(c=>{
+    const isMe=c.authorUid===currentUser.uid;
+    const color=colorMap[c.authorUid];
+    return`<div class="comment-item ${isMe?'comment-mine':''}">
+      ${isMe?'':`<div class="comment-av" style="background:${color}">${initials(c.authorName)}</div>`}
+      <div class="comment-bubble">
+        <div class="comment-meta">
+          <span class="comment-author" style="color:${color}">${esc(isMe?'أنت':c.authorName)}</span>
+          <span class="comment-time">${timeAgo(c.createdAt)}</span>
+        </div>
+        <div class="comment-text">${esc(c.text)}</div>
+      </div>
+      ${isMe?`<div class="comment-av" style="background:${color}">${initials(c.authorName)}</div>`:''}
+    </div>`;
+  }).join('');
+  list.scrollTop=list.scrollHeight;
+}
+
+async function sendComment(){
+  const input=document.getElementById('comment-input');
+  const text=input.value.trim();
+  if(!text)return;
+  const btn=document.getElementById('comment-send-btn');
+  btn.disabled=true;
+  try{
+    const colRef=commentsWsId
+      ?db.collection('workspaces').doc(commentsWsId).collection('tasks').doc(commentsTaskId).collection('comments')
+      :col('tasks').doc(commentsTaskId).collection('comments');
+    await colRef.doc(uid()).set({id:uid(),text,authorUid:currentUser.uid,authorName:currentUser.displayName||currentUser.email,authorEmail:currentUser.email,createdAt:Date.now()});
+    input.value='';
+    // إشعارات التعليق للمهام المشتركة
+    if(commentsWsId){
+      const task=wsTasks.find(t=>t.id===commentsTaskId);
+      if(task){
+        const snippet=text.slice(0,50)+(text.length>50?'...':'');
+        const notifBody=`"${task.title}" — ${currentUser.displayName||currentUser.email}: ${snippet}`;
+        if(task.assignedToUid&&task.assignedToUid!==currentUser.uid)
+          await createNotif(task.assignedToUid,{type:'task_updated',title:'💬 تعليق جديد على مهمتك',body:notifBody,link:{wsId:commentsWsId,taskId:commentsTaskId}});
+        if(task.createdByUid&&task.createdByUid!==currentUser.uid&&task.createdByUid!==task.assignedToUid)
+          await createNotif(task.createdByUid,{type:'task_updated',title:'💬 تعليق على مهمة',body:notifBody,link:{wsId:commentsWsId,taskId:commentsTaskId}});
+      }
+    }
+  }catch(e){toast('خطأ في إرسال التعليق','err');}
+  finally{btn.disabled=false;}
+}
+
+function commentKeydown(e){if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){e.preventDefault();sendComment();}}
+
+// إغلاق المستمع عند إغلاق modal التعليقات
+const _origClose=closeModal;
+window.closeModal=function(id){if(id==='comments-overlay'&&unsubComments){unsubComments();unsubComments=null;}_origClose(id);};
+
+</script>
+</body>
+</html>
