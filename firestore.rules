@@ -118,13 +118,13 @@ service cloud.firestore {
     match /regCodes/{code} {
       // القراءة مسموحة لأي مستخدم مسجّل دخول (لازم يقرأ الكود بعد إنشاء حسابه للتحقق منه)
       allow read: if isSignedIn();
-      allow create: if isSuperAdmin();
+      allow create: if isAppAdmin();
       // الاستخدام: انتقال واحد فقط من used=false إلى used=true، والمستخدم يحدد نفسه فقط
       allow update: if isSignedIn()
         && resource.data.used == false
         && request.resource.data.used == true
         && request.resource.data.usedByUid == request.auth.uid;
-      allow delete: if isSuperAdmin();
+      allow delete: if isAppAdmin();
     }
 
     // ═══ سجل إنجاز المهام (دائم وغير قابل للتعديل) ═══

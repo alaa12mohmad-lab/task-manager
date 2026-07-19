@@ -24,7 +24,7 @@ export function startAdminListener(){
 
 /* ══ ADMIN PANEL RENDER ══ */
 export function renderAdminPanel(){
-  if(!isSuperAdmin()){document.getElementById('page-admin').innerHTML='<div class="empty"><div class="ei">🚫</div><p>غير مصرح</p></div>';return;}
+  if(!state.isAdmin){document.getElementById('page-admin').innerHTML='<div class="empty"><div class="ei">🚫</div><p>غير مصرح</p></div>';return;}
   const online=state.allUserProfiles.filter(u=>u.isOnline).length;
   const el1=document.getElementById('adm-online');if(el1)el1.textContent=online;
   const el2=document.getElementById('adm-total');if(el2)el2.textContent=state.allUserProfiles.length;
@@ -53,13 +53,14 @@ export function renderAdminUsers(){
       if(ws.memberUids?.includes(u.uid)) acc.push(ws.name);
       return acc;
     },[]);
+    const isMgr=state.allAdmins.includes(u.uid);
     return`<div class="admin-user-row">
       <div class="admin-user-av" style="background:${color}">
         ${initials(u.displayName||u.email)}
         <div class="presence-dot ${u.isOnline?'online':'offline'}"></div>
       </div>
       <div class="admin-user-info">
-        <div class="admin-user-name">${esc(u.displayName||u.email)}</div>
+        <div class="admin-user-name">${esc(u.displayName||u.email)}${isMgr?' <span class="admin-crown" style="font-size:.7rem">🔑 مدير عمل</span>':''}</div>
         <div class="admin-user-email">${esc(u.email)}</div>
         <div class="admin-user-meta">
           <span>🔑 آخر دخول: ${loginTime}</span>
@@ -71,6 +72,10 @@ export function renderAdminUsers(){
         <span class="online-badge ${u.isOnline?'on':'off'}">${u.isOnline?'🟢 متصل':'⚫ غير متصل'}</span>
         ${u.isOnline?`<span style="font-size:.65rem;color:var(--muted)">${onlineAgo}</span>`:`<span style="font-size:.65rem;color:var(--muted)">${onlineAgo}</span>`}
         <button class="btn btn-ghost btn-sm" style="font-size:.72rem" onclick="quickNotifUser('${u.uid}','${esc(u.displayName||u.email)}')">🔔</button>
+        ${isSuperAdmin()?(isMgr
+          ?`<button class="btn btn-ghost btn-sm" style="font-size:.7rem;color:var(--cancel)" onclick="revokeAdmin('${u.uid}','${esc(u.displayName||u.email)}')">إلغاء صلاحية مدير</button>`
+          :`<button class="btn btn-ghost btn-sm" style="font-size:.7rem;color:var(--done)" onclick="promoteToAdmin('${u.uid}','${esc(u.displayName||u.email)}')">ترقية لمدير عمل</button>`
+        ):''}
       </div>
     </div>`;
   }).join('');
@@ -202,7 +207,7 @@ export async function adminSetWsRole(wsId,memberUid,newRole){
 
 /* ══ CLEAR DEFAULT DATA ══ */
 export async function clearAllDefaultData(){
-  if(!isSuperAdmin()){toast('غير مصرح','err');return;}
+  if(!state.isAdmin){toast('غير مصرح','err');return;}
   if(!confirm('⚠️ هل أنت متأكد؟ سيتم حذف كل الموظفين والمهام الشخصية نهائياً.'))return;
   if(!confirm('تأكيد أخير: هذه العملية لا يمكن التراجع عنها!'))return;
 
@@ -237,16 +242,11 @@ export async function checkAndLoadAdminRole(user){
     if(adminDoc.exists && adminDoc.data().active) state.isAdmin = true;
   }catch(e){}
 
-  // واجهة المالك الكاملة
-  if(isSA){
+  // واجهة المالك الكاملة (مدير النظام) والمدير المعيَّن (مدير العمل) — نفس مستوى الوصول،
+  // ما عدا ترقية/إلغاء مديرين تانيين اللي تفضل حصرية لمدير النظام فقط (شوف renderAdminUsers)
+  if(state.isAdmin){
     ['admin-nav-hr','admin-nav-label','nav-admin',
      'btn-add-emp','btn-add-emp2','nav-kpi'].forEach(id=>{
-      const el=document.getElementById(id);if(el)el.style.display='';
-    });
-  }
-  // واجهة المدير المعيَّن
-  if(state.isAdmin && !isSA){
-    ['nav-kpi','btn-add-emp','btn-add-emp2'].forEach(id=>{
       const el=document.getElementById(id);if(el)el.style.display='';
     });
   }
@@ -257,10 +257,10 @@ export async function checkAndLoadAdminRole(user){
   // تحميل بيانات المديرين
   db.collection('admins').onSnapshot(snap=>{
     state.allAdmins = snap.docs.filter(d=>d.data().active).map(d=>d.id);
-    if(isSA && state.currentPage==='admin') renderAdminPanel();
+    if(state.isAdmin && state.currentPage==='admin') renderAdminPanel();
   });
 
-  if(isSA) startAdminListener();
+  if(state.isAdmin) startAdminListener();
   startPresenceTracking();
 }
 
@@ -300,7 +300,7 @@ function randomRegCode(){
 }
 
 export async function generateRegCode(){
-  if(!isSuperAdmin()){toast('غير مصرح','err');return;}
+  if(!state.isAdmin){toast('غير مصرح','err');return;}
   setSyncStatus('syncing');
   try{
     const code=randomRegCode();
@@ -332,7 +332,7 @@ export function copyRegCode(code){
 }
 
 export async function revokeRegCode(code){
-  if(!isSuperAdmin()){toast('غير مصرح','err');return;}
+  if(!state.isAdmin){toast('غير مصرح','err');return;}
   if(!confirm('حذف هذا الكود؟'))return;
   try{await db.collection('regCodes').doc(code).delete();toast('تم حذف الكود','inf');}
   catch(e){toast('خطأ','err');}
