@@ -55,6 +55,8 @@ export const state = {
   broadcastTargets: [],
   isAdmin: false,
   allAdmins: [],
+  unsubRegCodes: null,
+  regCodes: [],
 
   // assigned tasks
   unsubAssigned: null,
@@ -74,4 +76,9 @@ export const state = {
   commentsWsId: null,
   unsubComments: null,
   commentsList: [],
+
+  // task completion history
+  unsubHistory: null,
+  history: [],
+  historyEmployeeFilter: null, // admin: filter history by a specific employee uid (null = everyone)
 };

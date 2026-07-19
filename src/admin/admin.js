@@ -19,6 +19,7 @@ export function startAdminListener(){
     if(state.currentPage==='admin') renderAdminUsers();
     populateBroadcastSelect();
   },err=>console.warn('adminListener:',err));
+  startRegCodesListener();
 }
 
 /* ══ ADMIN PANEL RENDER ══ */
@@ -31,6 +32,7 @@ export function renderAdminPanel(){
   const el4=document.getElementById('adm-tasks');if(el4)el4.textContent=state.tasks.length;
   renderAdminUsers();
   renderAdminSessions();
+  renderRegCodesList();
   populateBroadcastSelect();
 }
 
@@ -287,4 +289,70 @@ export async function revokeAdmin(targetUid, targetName){
   }catch(e){toast('خطأ','err');setSyncStatus('error');}
 }
 
-/* Override openComments for assigned tasks (use separate collection) */
+/* ══ REGISTRATION CODES ══ */
+// Generate a one-time code the manager gives an employee directly (WhatsApp, in person, etc.)
+// so registration is closed to anyone who doesn't have a valid code.
+function randomRegCode(){
+  const chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no ambiguous chars (0/O, 1/I)
+  let s='';
+  for(let i=0;i<8;i++) s+=chars[Math.floor(Math.random()*chars.length)];
+  return s;
+}
+
+export async function generateRegCode(){
+  if(!isSuperAdmin()){toast('غير مصرح','err');return;}
+  setSyncStatus('syncing');
+  try{
+    const code=randomRegCode();
+    await db.collection('regCodes').doc(code).set({
+      code,
+      createdByUid:state.currentUser.uid,
+      createdByName:state.currentUser.displayName||state.currentUser.email,
+      createdAt:Date.now(),
+      used:false,
+      usedByUid:null,
+      usedByEmail:null,
+      usedAt:null
+    });
+    toast(`تم توليد الكود: ${code}`,'ok');
+    setSyncStatus('synced');
+  }catch(e){toast('خطأ في توليد الكود: '+e.message,'err');setSyncStatus('error');}
+}
+
+export function startRegCodesListener(){
+  if(state.unsubRegCodes){state.unsubRegCodes();state.unsubRegCodes=null;}
+  state.unsubRegCodes=db.collection('regCodes').orderBy('createdAt','desc').onSnapshot(snap=>{
+    state.regCodes=snap.docs.map(d=>({...d.data(),id:d.id}));
+    if(state.currentPage==='admin') renderRegCodesList();
+  },err=>console.warn('regCodes listener:',err));
+}
+
+export function copyRegCode(code){
+  navigator.clipboard?.writeText(code).then(()=>toast('تم نسخ الكود ✓','ok')).catch(()=>toast('انسخه يدوياً: '+code,'inf'));
+}
+
+export async function revokeRegCode(code){
+  if(!isSuperAdmin()){toast('غير مصرح','err');return;}
+  if(!confirm('حذف هذا الكود؟'))return;
+  try{await db.collection('regCodes').doc(code).delete();toast('تم حذف الكود','inf');}
+  catch(e){toast('خطأ','err');}
+}
+
+export function renderRegCodesList(){
+  const list=document.getElementById('admin-regcodes-list');
+  if(!list)return;
+  if(!state.regCodes.length){list.innerHTML='<div class="empty" style="padding:20px"><div class="ei" style="font-size:1.5rem">🔑</div><p style="font-size:.8rem">لا توجد أكواد بعد</p></div>';return;}
+  list.innerHTML=state.regCodes.map(c=>{
+    const status=c.used
+      ?`<span class="online-badge off">✓ مُستخدم — ${esc(c.usedByEmail||'')}</span>`
+      :`<span class="online-badge on">⏳ لم يُستخدم بعد</span>`;
+    return `<div class="session-row">
+      <span class="si">🔑</span>
+      <div style="font-size:.85rem;font-weight:900;letter-spacing:2px;width:110px">${esc(c.code)}</div>
+      <div style="font-size:.68rem;color:var(--muted);flex:1">${status}</div>
+      <span style="font-size:.65rem;color:var(--muted)">${timeAgo(c.createdAt)}</span>
+      ${!c.used?`<button class="btn btn-ghost btn-sm" style="font-size:.7rem" onclick="copyRegCode('${c.code}')">📋 نسخ</button>
+      <button class="icon-btn del btn-sm" onclick="revokeRegCode('${c.code}')" title="حذف">✕</button>`:''}
+    </div>`;
+  }).join('');
+}

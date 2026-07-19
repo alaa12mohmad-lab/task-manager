@@ -6,6 +6,7 @@ import { openModal, closeModal } from '../ui/modal.js';
 import { quickFilter } from '../ui/navigation.js';
 import { populateEmpSelect } from './employees.js';
 import { openComments } from '../comments/comments.js';
+import { logTaskCompletion } from '../history/history.js';
 
 export function openTaskModal(id = null, prefillDate = null) {
   state.editTaskId = id;
@@ -86,7 +87,14 @@ export function openTaskDetail(id) {
 
 export async function quickStatus(id, status) {
   setSyncStatus('syncing');
-  try { await col('tasks').doc(id).update({ status }); closeModal('detail-overlay'); toast('تم تغيير الحالة ✓', 'ok'); }
+  try {
+    await col('tasks').doc(id).update({ status });
+    if (status === 'done') {
+      const t = state.tasks.find(x => x.id === id);
+      if (t) logTaskCompletion({ taskId: id, taskTitle: t.title, sourceType: 'personal' });
+    }
+    closeModal('detail-overlay'); toast('تم تغيير الحالة ✓', 'ok');
+  }
   catch (e) { toast('خطأ', 'err'); setSyncStatus('error'); }
 }
 export async function deleteTask(id) {
@@ -98,8 +106,12 @@ export async function deleteTask(id) {
 export async function toggleStatus(id) {
   const t = state.tasks.find(x => x.id === id);
   const cycle = { pending: 'wip', wip: 'done', done: 'pending', cancelled: 'pending' };
+  const newStatus = cycle[t.status];
   setSyncStatus('syncing');
-  try { await col('tasks').doc(id).update({ status: cycle[t.status] }); }
+  try {
+    await col('tasks').doc(id).update({ status: newStatus });
+    if (newStatus === 'done') logTaskCompletion({ taskId: id, taskTitle: t.title, sourceType: 'personal' });
+  }
   catch (e) { setSyncStatus('error'); }
 }
 

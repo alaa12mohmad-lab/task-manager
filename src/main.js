@@ -32,7 +32,8 @@ import { toggleNotifPanel, closeNotifPanel, handleNotifClick, markAllRead } from
 import {
   renderAdminUsers, addBroadcastTarget, removeBroadcastTarget, selectAllBroadcast,
   clearBroadcastTargets, sendBroadcast, quickNotifUser, adminSetWsRole,
-  clearAllDefaultData, promoteToAdmin, revokeAdmin
+  clearAllDefaultData, promoteToAdmin, revokeAdmin,
+  generateRegCode, copyRegCode, revokeRegCode
 } from './admin/admin.js';
 
 // ── Assigned tasks ──
@@ -46,6 +47,9 @@ import { loadChatRoom, sendChatMsg, chatKeydown, autoResizeChatInput } from './c
 
 // ── Comments ──
 import { openComments, sendComment, commentKeydown } from './comments/comments.js';
+
+// ── History ──
+import { filterHistoryByEmployee } from './history/history.js';
 
 // index.html still uses plain onclick="functionName(...)" attributes (unchanged from the
 // original single-file app), so every function those attributes reference has to exist on
@@ -65,10 +69,12 @@ Object.assign(window, {
   renderAdminUsers, addBroadcastTarget, removeBroadcastTarget, selectAllBroadcast,
   clearBroadcastTargets, sendBroadcast, quickNotifUser, adminSetWsRole,
   clearAllDefaultData, promoteToAdmin, revokeAdmin,
+  generateRegCode, copyRegCode, revokeRegCode,
   openAssignModal, saveAssignedTask, deleteAssignedTask, toggleAssignedStatus,
   toggleEmpTasks,
   loadChatRoom, sendChatMsg, chatKeydown, autoResizeChatInput,
   openComments, sendComment, commentKeydown,
+  filterHistoryByEmployee,
 });
 
 // ── Global keyboard shortcuts ──

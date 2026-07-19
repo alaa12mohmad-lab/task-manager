@@ -7,29 +7,42 @@ import { openModal, closeModal } from '../ui/modal.js';
 import { createNotif } from '../notifications/notifications.js';
 import { openComments } from '../comments/comments.js';
 import { renderKpiPage } from '../kpi/kpi.js';
+import { logTaskCompletion } from '../history/history.js';
 
 export function startAssignedTasksListener(){
   if(state.unsubAssigned){state.unsubAssigned();state.unsubAssigned=null;}
   if(!state.currentUser)return;
-  let q;
-  // المدير: كل المهام المُسندة
-  // الموظف: فقط المهام المسندة إليه
-  // نستخدم استعلامًا واحدًا لكليهما ثم نفلتر في JS
-  q = db.collection('assignedTasks').orderBy('createdAt','desc');
-  state.unsubAssigned = q.onSnapshot(snap=>{
-    const all = snap.docs.map(d=>({...d.data(),id:d.id}));
-    if(state.isAdmin){
-      state.assignedTasks = all;
-    } else {
-      state.assignedTasks = all.filter(t=>t.assignedToUid===state.currentUser.uid);
-    }
-    // عد المهام غير المنتهية للموظف
-    const myPending = state.assignedTasks.filter(t=>t.assignedToUid===state.currentUser.uid&&t.status!=='done'&&t.status!=='cancelled').length;
-    const nb = document.getElementById('nb-assigned');
-    if(nb) nb.textContent = state.isAdmin ? all.length : myPending;
-    if(state.currentPage==='assigned') renderAssignedPage();
-    if(state.currentPage==='kpi') renderKpiPage();
-  }, err=>console.warn('assignedTasks listener:',err));
+  if(state.isAdmin){
+    state.unsubAssigned = db.collection('assignedTasks').orderBy('createdAt','desc').onSnapshot(snap=>{
+      state.assignedTasks = snap.docs.map(d=>({...d.data(),id:d.id}));
+      updateAssignedBadgeAndRerender();
+    }, err=>console.warn('assignedTasks listener:',err));
+  } else {
+    // الموظف العادي: يشوف بس المهام المُسندة إليه أو التي أنشأها هو
+    let byAssignedTo={}, byAssignedBy={};
+    const rerender=()=>{
+      const merged={...byAssignedTo,...byAssignedBy};
+      state.assignedTasks=Object.values(merged).sort((a,b)=>b.createdAt-a.createdAt);
+      updateAssignedBadgeAndRerender();
+    };
+    const unsub1=db.collection('assignedTasks').where('assignedToUid','==',state.currentUser.uid).onSnapshot(snap=>{
+      byAssignedTo={};snap.docs.forEach(d=>byAssignedTo[d.id]={...d.data(),id:d.id});
+      rerender();
+    }, err=>console.warn('assignedTasks (to) listener:',err));
+    const unsub2=db.collection('assignedTasks').where('assignedByUid','==',state.currentUser.uid).onSnapshot(snap=>{
+      byAssignedBy={};snap.docs.forEach(d=>byAssignedBy[d.id]={...d.data(),id:d.id});
+      rerender();
+    }, err=>console.warn('assignedTasks (by) listener:',err));
+    state.unsubAssigned=()=>{unsub1();unsub2();};
+  }
+}
+
+function updateAssignedBadgeAndRerender(){
+  const myPending = state.assignedTasks.filter(t=>t.assignedToUid===state.currentUser.uid&&t.status!=='done'&&t.status!=='cancelled').length;
+  const nb = document.getElementById('nb-assigned');
+  if(nb) nb.textContent = state.isAdmin ? state.assignedTasks.length : myPending;
+  if(state.currentPage==='assigned') renderAssignedPage();
+  if(state.currentPage==='kpi') renderKpiPage();
 }
 
 /* ══ OPEN/SAVE ASSIGNED TASK MODAL ══ */
@@ -143,6 +156,12 @@ export async function toggleAssignedStatus(id){
   setSyncStatus('syncing');
   try{
     await db.collection('assignedTasks').doc(id).update({status:newStatus,updatedAt:Date.now()});
+    if(newStatus==='done'){
+      logTaskCompletion({
+        taskId:id,taskTitle:t.title,sourceType:'assigned',
+        employeeUid:t.assignedToUid,employeeName:t.assignedToName
+      });
+    }
     // إشعار المدير لو الموظف غيّر الحالة
     if(!state.isAdmin && t.assignedByUid && t.assignedByUid!==state.currentUser.uid){
       await createNotif(t.assignedByUid,{type:'task_status',

@@ -81,20 +81,56 @@ export async function createWorkspace(){
 }
 
 // Open workspace detail
+// ── Role-aware workspace tasks listener ──
+// Managers/owners can list all workspace tasks. Regular members are restricted by the
+// security rules to only their own (assigned-to-them or created-by-them) tasks, so the
+// client query must be pre-filtered to match — Firestore rejects unconstrained "list"
+// queries a member isn't allowed to see in full, it doesn't silently filter them.
+let wsTasksMode=null;
+export function teardownWsTasksListener(){
+  if(state.unsubWsTasks){state.unsubWsTasks();state.unsubWsTasks=null;}
+  wsTasksMode=null;
+}
+function setupWsTasksListener(wsId){
+  const mode=canManageWs()?'manager':'member';
+  if(mode===wsTasksMode)return; // already listening correctly for this role
+  teardownWsTasksListener();
+  wsTasksMode=mode;
+  if(mode==='manager'){
+    state.unsubWsTasks=db.collection('workspaces').doc(wsId).collection('tasks').orderBy('created','desc').onSnapshot(snap=>{
+      state.wsTasks=snap.docs.map(d=>({...d.data(),id:d.id}));
+      if(state.currentPage==='ws-detail')renderWsDetail();
+    });
+  }else{
+    let byAssigned={},byCreated={};
+    const rerender=()=>{
+      const merged={...byAssigned,...byCreated};
+      state.wsTasks=Object.values(merged).sort((a,b)=>b.created-a.created);
+      if(state.currentPage==='ws-detail')renderWsDetail();
+    };
+    const unsub1=db.collection('workspaces').doc(wsId).collection('tasks').where('assignedToUid','==',state.currentUser.uid).onSnapshot(snap=>{
+      byAssigned={};snap.docs.forEach(d=>byAssigned[d.id]={...d.data(),id:d.id});
+      rerender();
+    });
+    const unsub2=db.collection('workspaces').doc(wsId).collection('tasks').where('createdByUid','==',state.currentUser.uid).onSnapshot(snap=>{
+      byCreated={};snap.docs.forEach(d=>byCreated[d.id]={...d.data(),id:d.id});
+      rerender();
+    });
+    state.unsubWsTasks=()=>{unsub1();unsub2();};
+  }
+}
+
 export function openWs(wsId){
   state.currentWs=state.myWorkspaces.find(w=>w.id===wsId);
   if(!state.currentWs)return;
   state.wsMembers=[];state.wsTasks=[];state.editWsTaskId=null;
   // Stop previous listeners
   if(state.unsubWsMembers){state.unsubWsMembers();state.unsubWsMembers=null;}
-  if(state.unsubWsTasks){state.unsubWsTasks();state.unsubWsTasks=null;}
+  teardownWsTasksListener();
   // Start new listeners
   state.unsubWsMembers=db.collection('workspaces').doc(wsId).collection('members').onSnapshot(snap=>{
     state.wsMembers=snap.docs.map(d=>({...d.data(),uid:d.id}));
-    if(state.currentPage==='ws-detail')renderWsDetail();
-  });
-  state.unsubWsTasks=db.collection('workspaces').doc(wsId).collection('tasks').orderBy('created','desc').onSnapshot(snap=>{
-    state.wsTasks=snap.docs.map(d=>({...d.data(),id:d.id}));
+    setupWsTasksListener(wsId); // role may only be known once members have loaded
     if(state.currentPage==='ws-detail')renderWsDetail();
   });
   state.wsCurrentTab='tasks';

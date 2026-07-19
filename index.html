@@ -42,6 +42,7 @@
         <div class="auth-error" id="reg-error"></div>
         <div class="auth-fg"><label>الاسم الكامل *</label><input class="auth-input" id="reg-name" type="text" placeholder="أدخل اسمك..."></div>
         <div class="auth-fg"><label>البريد الإلكتروني *</label><input class="auth-input" id="reg-email" type="email" placeholder="example@email.com"></div>
+        <div class="auth-fg"><label>كود التسجيل *</label><input class="auth-input" id="reg-code" type="text" placeholder="الكود اللي أعطاك إياه المدير" style="letter-spacing:2px"></div>
         <div class="auth-fg"><label>كلمة المرور *</label>
           <div class="pw-wrap"><input class="auth-input" id="reg-pw" type="password" placeholder="8 أحرف على الأقل" oninput="checkStrength()"><button class="pw-toggle" onclick="togglePw('reg-pw',this)" tabindex="-1">👁</button></div>
           <div class="pw-strength"><div class="pw-bar" id="bar1"></div><div class="pw-bar" id="bar2"></div><div class="pw-bar" id="bar3"></div><div class="pw-bar" id="bar4"></div></div>
@@ -100,6 +101,9 @@
     <div class="nav-item" id="nav-assigned" onclick="goPage('assigned')">
       <span class="nav-icon">📌</span> <span id="nav-assigned-label">مهامي المُسندة</span>
       <span class="nav-badge" id="nb-assigned">0</span>
+    </div>
+    <div class="nav-item" id="nav-history" onclick="goPage('history')">
+      <span class="nav-icon">📜</span> سجل الإنجاز
     </div>
     <div class="nav-item" id="nav-kpi" onclick="goPage('kpi')" style="display:none">
       <span class="nav-icon">📊</span> متابعة الموظفين
@@ -226,6 +230,11 @@
       <div id="kpi-page-content"></div>
     </div>
 
+    <!-- TASK HISTORY PAGE -->
+    <div class="page" id="page-history">
+      <div id="history-page-content"></div>
+    </div>
+
     <!-- MESSAGING PAGE -->
     <div class="page" id="page-chat">
       <div class="chat-layout" id="chat-layout">
@@ -285,6 +294,16 @@
           <input class="fi" id="broadcast-title" type="text" placeholder="عنوان الإشعار..." style="margin-bottom:8px">
           <textarea class="fta" id="broadcast-msg" placeholder="نص الإشعار..." style="min-height:60px;margin-bottom:10px"></textarea>
           <button class="btn btn-primary" onclick="sendBroadcast()">📣 إرسال الإشعار</button>
+        </div>
+
+        <!-- Registration codes -->
+        <div class="admin-section">
+          <div class="admin-section-title" style="justify-content:space-between">
+            <span>🔑 أكواد تسجيل الموظفين</span>
+            <button class="btn btn-primary btn-sm" onclick="generateRegCode()">+ توليد كود جديد</button>
+          </div>
+          <div style="font-size:.75rem;color:var(--muted);margin-bottom:10px">وّلد كود واديه للموظف يدوياً (واتساب، شخصياً...) عشان يسجّل حساب جديد. كل كود يُستخدم مرة واحدة فقط.</div>
+          <div id="admin-regcodes-list"><div class="empty" style="padding:20px"><div class="ei" style="font-size:1.5rem">🔑</div><p style="font-size:.8rem">لا توجد أكواد بعد</p></div></div>
         </div>
 
         <!-- Users list -->

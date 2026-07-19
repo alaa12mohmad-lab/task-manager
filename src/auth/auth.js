@@ -5,12 +5,13 @@ import { initials, col } from '../core/utils.js';
 import { setSyncStatus, setLoadText, hideLoading } from '../ui/toast.js';
 import { setBtnLoading } from '../ui/formHelpers.js';
 import { renderAll } from '../personal/dashboard.js';
-import { startWsListeners } from '../workspaces/workspaces.js';
+import { startWsListeners, teardownWsTasksListener } from '../workspaces/workspaces.js';
 import { startNotifListener } from '../notifications/notifications.js';
-import { startPresenceTracking, updatePresence } from '../presence/presence.js';
+import { updatePresence } from '../presence/presence.js';
 import { startAssignedTasksListener } from '../assigned/assignedTasks.js';
 import { startChatListener } from '../chat/chat.js';
 import { checkAndLoadAdminRole } from '../admin/admin.js';
+import { startHistoryListener } from '../history/history.js';
 
 // Wires Firebase auth state changes to the app's boot/teardown flow.
 // Call this once from main.js at startup.
@@ -21,7 +22,7 @@ export function initAuth() {
   });
 }
 
-export function showApp(user){
+export async function showApp(user){
   const isSuper=user.email===SUPER_ADMIN;
   document.getElementById('su-name').textContent=user.displayName||'مستخدم';
   document.getElementById('su-role').innerHTML=isSuper?`<span class="admin-crown">👑 المدير الرئيسي</span>`:user.email;
@@ -33,17 +34,18 @@ export function showApp(user){
   startPersonalListeners();
   startWsListeners();
   startNotifListener();
-  startPresenceTracking();
-  // إعداد الواجهة بناءً على دور المستخدم
+  // لازم نعرف دور المستخدم (isAdmin) قبل ما نبدأ مستمع المهام المُسندة،
+  // لأن الاستعلام نفسه بيختلف حسب الدور (مش مجرد فلترة بعد الجلب)
+  await checkAndLoadAdminRole(user);
   startAssignedTasksListener();
   startChatListener();
-  checkAndLoadAdminRole(user);
+  startHistoryListener();
 }
 
 export function showAuthScreen(){hideLoading();document.getElementById('app').style.display='none';document.getElementById('auth-screen').style.display='flex';}
 
 export function stopAllListeners(){
-  [()=>state.unsubTasks&&state.unsubTasks(),()=>state.unsubEmps&&state.unsubEmps(),()=>state.unsubWorkspaces&&state.unsubWorkspaces(),()=>state.unsubInvites&&state.unsubInvites(),()=>state.unsubWsMembers&&state.unsubWsMembers(),()=>state.unsubWsTasks&&state.unsubWsTasks(),()=>state.unsubNotifs&&state.unsubNotifs(),()=>state.unsubAdminUsers&&state.unsubAdminUsers(),()=>state.unsubAssigned&&state.unsubAssigned(),()=>state.unsubChat&&state.unsubChat()].forEach(f=>f()); if(state.presenceInterval){clearInterval(state.presenceInterval);state.presenceInterval=null;} updatePresence(false).catch(()=>{});
+  [()=>state.unsubTasks&&state.unsubTasks(),()=>state.unsubEmps&&state.unsubEmps(),()=>state.unsubWorkspaces&&state.unsubWorkspaces(),()=>state.unsubInvites&&state.unsubInvites(),()=>state.unsubWsMembers&&state.unsubWsMembers(),()=>teardownWsTasksListener(),()=>state.unsubNotifs&&state.unsubNotifs(),()=>state.unsubAdminUsers&&state.unsubAdminUsers(),()=>state.unsubAssigned&&state.unsubAssigned(),()=>state.unsubChat&&state.unsubChat(),()=>state.unsubRegCodes&&state.unsubRegCodes(),()=>state.unsubHistory&&state.unsubHistory()].forEach(f=>f()); if(state.presenceInterval){clearInterval(state.presenceInterval);state.presenceInterval=null;} updatePresence(false).catch(()=>{});
   state.tasks=[];state.emps=[];state.myWorkspaces=[];state.pendingInvites=[];state.wsMembers=[];state.wsTasks=[];
 }
 
@@ -98,18 +100,36 @@ export async function doLogin(){
 export async function doRegister(){
   const name=document.getElementById('reg-name').value.trim();
   const email=document.getElementById('reg-email').value.trim();
+  const code=document.getElementById('reg-code').value.trim().toUpperCase();
   const pw=document.getElementById('reg-pw').value;
   const pw2=document.getElementById('reg-pw2').value;
   clearAuthErrors();
-  if(!name||!email||!pw||!pw2){showAuthErr('reg-error','يرجى ملء جميع الحقول');return;}
+  if(!name||!email||!code||!pw||!pw2){showAuthErr('reg-error','يرجى ملء جميع الحقول');return;}
   if(pw!==pw2){showAuthErr('reg-error','كلمتا المرور غير متطابقتين');return;}
   if(pw.length<8){showAuthErr('reg-error','كلمة المرور يجب أن تكون 8 أحرف على الأقل');return;}
   setBtnLoading('reg-btn',true);
-  try{const c=await auth.createUserWithEmailAndPassword(email,pw);await c.user.updateProfile({displayName:name});}
+  let createdUser=null;
+  try{
+    const c=await auth.createUserWithEmailAndPassword(email,pw);
+    createdUser=c.user;
+    // ── تحقق من كود التسجيل (نتحقق بعد إنشاء الحساب لأن قواعد Firestore تحتاج مستخدم مُسجّل دخوله) ──
+    const codeRef=db.collection('regCodes').doc(code);
+    const codeSnap=await codeRef.get();
+    if(!codeSnap.exists || codeSnap.data().used){
+      await createdUser.delete();
+      showAuthErr('reg-error','كود التسجيل غير صحيح أو مُستخدم من قبل');
+      setBtnLoading('reg-btn',false,'<span>✨</span> إنشاء حساب');
+      return;
+    }
+    await codeRef.update({used:true,usedByUid:createdUser.uid,usedByEmail:email,usedAt:Date.now()});
+    await createdUser.updateProfile({displayName:name});
+  }
   catch(e){
     const m={'auth/email-already-in-use':'هذا البريد مسجل مسبقاً','auth/invalid-email':'البريد غير صالح','auth/weak-password':'كلمة المرور ضعيفة'};
-    showAuthErr('reg-error',m[e.code]||'خطأ في إنشاء الحساب');
+    showAuthErr('reg-error',m[e.code]||('خطأ في إنشاء الحساب: '+(e.message||'')));
     setBtnLoading('reg-btn',false,'<span>✨</span> إنشاء حساب');
+    // لو الحساب اتعمل بس فشل التحقق من الكود بسبب خطأ غير متوقع، نلغيه لمنع حساب بدون كود صالح
+    if(createdUser){try{await createdUser.delete();}catch(_){}}
   }
 }
 export async function doReset(){

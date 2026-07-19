@@ -8,7 +8,8 @@ export const COLORS = ['#4f8ef7', '#7c5ce4', '#00c896', '#f7a23e', '#ff5c7a', '#
 export const pageTitles = {
   dash: 'لوحة التحكم', tasks: 'مهامي', emps: 'موظفوي', cal: 'التقويم',
   workspaces: 'المساحات المشتركة', 'ws-detail': '...', admin: '👑 لوحة المالك',
-  assigned: '📌 المهام المُسندة', kpi: '📊 متابعة الموظفين', chat: '💬 المراسلة'
+  assigned: '📌 المهام المُسندة', kpi: '📊 متابعة الموظفين', chat: '💬 المراسلة',
+  history: '📜 سجل الإنجاز'
 };
 
 export const wsStatusLabels = { pending: 'معلّقة', wip: 'قيد التنفيذ', done: 'منتهية', cancelled: 'ملغية' };

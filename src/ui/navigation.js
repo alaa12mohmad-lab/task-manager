@@ -8,6 +8,7 @@ import { renderWorkspacesPage, renderWsDetail } from '../workspaces/workspaces.j
 import { renderAdminPanel } from '../admin/admin.js';
 import { renderAssignedPage } from '../assigned/assignedTasks.js';
 import { renderKpiPage } from '../kpi/kpi.js';
+import { renderHistoryPage } from '../history/history.js';
 import { renderChatRooms, loadChatRoom } from '../chat/chat.js';
 
 export function toggleSidebar() {
@@ -43,6 +44,7 @@ export function goPage(p) {
   if (p === 'admin') renderAdminPanel();
   if (p === 'assigned') renderAssignedPage();
   if (p === 'kpi') renderKpiPage();
+  if (p === 'history') renderHistoryPage();
   if (p === 'chat') { renderChatRooms(); if (state.currentChatRoom) loadChatRoom(state.currentChatRoom); }
 }
 

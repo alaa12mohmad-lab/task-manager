@@ -4,6 +4,7 @@ import { esc, fmtDate, uid } from '../core/utils.js';
 import { toast, setSyncStatus } from '../ui/toast.js';
 import { openModal, closeModal } from '../ui/modal.js';
 import { createNotif } from '../notifications/notifications.js';
+import { logTaskCompletion } from '../history/history.js';
 
 export function openWsTaskModal(id=null){
   state.editWsTaskId=id;
@@ -105,6 +106,14 @@ export async function toggleWsTaskStatus(id){
   setSyncStatus('syncing');
   try{
     await db.collection('workspaces').doc(state.currentWs.id).collection('tasks').doc(id).update({status:newStatus});
+    if(newStatus==='done' && t.assignedToUid){
+      const assignee=state.wsMembers.find(m=>m.uid===t.assignedToUid);
+      logTaskCompletion({
+        taskId:id,taskTitle:t.title,sourceType:'workspace',
+        workspaceId:state.currentWs.id,workspaceName:state.currentWs.name,
+        employeeUid:t.assignedToUid,employeeName:assignee?.displayName||assignee?.email||t.assignedToName
+      });
+    }
     // إشعار: لو الشخص الذي يغيّر ليس هو المُسند إليه → أشعر المسند إليه
     if(t.assignedToUid && t.assignedToUid!==state.currentUser.uid){
       await createNotif(t.assignedToUid,{
