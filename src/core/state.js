@@ -65,6 +65,7 @@ export const state = {
   assignedTasks: [],
   assignedTasksForEmp: {},
   editAssignedId: null,
+  assignedPageEmployeeFilter: null,
 
   // chat
   unsubChat: null,

@@ -173,6 +173,11 @@ export async function toggleAssignedStatus(id){
 }
 
 /* ══ RENDER ASSIGNED TASKS PAGE ══ */
+export function filterAssignedByEmployee(uid){
+  state.assignedPageEmployeeFilter=uid||null;
+  renderAssignedPage();
+}
+
 export function renderAssignedPage(){
   const wrap = document.getElementById('assigned-page-content');
   if(!wrap)return;
@@ -180,19 +185,31 @@ export function renderAssignedPage(){
   const pL={high:'عالية',medium:'متوسطة',low:'منخفضة'};
 
   if(state.isAdmin){
-    // المدير: يرى كل الموظفين وما عليهم
+    // المدير: يرى كل الموظفين وما عليهم (أو موظف واحد بس لو اختار فلتر)
     const byEmp = {};
     state.assignedTasks.forEach(t=>{
       if(!byEmp[t.assignedToUid]) byEmp[t.assignedToUid]={name:t.assignedToName,tasks:[]};
       byEmp[t.assignedToUid].tasks.push(t);
     });
-    const empUids = Object.keys(byEmp);
-    let html = `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-      <div style="font-size:.85rem;color:var(--muted)">${state.assignedTasks.length} مهمة مسندة لـ ${empUids.length} موظف</div>
+    let empUids = Object.keys(byEmp);
+    if(state.assignedPageEmployeeFilter){
+      empUids = empUids.filter(uid=>uid===state.assignedPageEmployeeFilter);
+    }
+    const filterOptions=state.allUserProfiles.filter(u=>u.uid!==state.currentUser.uid);
+    const filterBar=`<div style="margin-bottom:14px">
+      <select class="fselect" onchange="filterAssignedByEmployee(this.value)" style="width:100%;max-width:280px">
+        <option value="">👥 كل الموظفين</option>
+        ${filterOptions.map(u=>`<option value="${u.uid}" ${state.assignedPageEmployeeFilter===u.uid?'selected':''}>${esc(u.displayName||u.email)}</option>`).join('')}
+      </select>
+    </div>`;
+    let html = filterBar+`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <div style="font-size:.85rem;color:var(--muted)">${state.assignedTasks.length} مهمة مسندة لـ ${Object.keys(byEmp).length} موظف</div>
       <button class="btn btn-primary" onclick="openAssignModal()">📌 إسناد مهمة جديدة</button>
     </div>`;
-    if(!state.assignedTasks.length){
-      html += `<div class="empty"><div class="ei">📌</div><p>لا توجد مهام مُسندة بعد</p><small>أسند مهمة لأحد الموظفين</small></div>`;
+    if(!empUids.length){
+      html += state.assignedPageEmployeeFilter
+        ?`<div class="empty"><div class="ei">📭</div><p>لا توجد مهام مُسندة لهذا الموظف</p></div>`
+        :`<div class="empty"><div class="ei">📌</div><p>لا توجد مهام مُسندة بعد</p><small>أسند مهمة لأحد الموظفين</small></div>`;
     } else {
       html += empUids.map(uid=>{
         const g = byEmp[uid];

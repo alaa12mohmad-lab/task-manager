@@ -38,7 +38,7 @@ import {
 } from './admin/admin.js';
 
 // ── Assigned tasks ──
-import { openAssignModal, saveAssignedTask, deleteAssignedTask, toggleAssignedStatus } from './assigned/assignedTasks.js';
+import { openAssignModal, saveAssignedTask, deleteAssignedTask, toggleAssignedStatus, filterAssignedByEmployee } from './assigned/assignedTasks.js';
 
 // ── KPI ──
 import { toggleEmpTasks } from './kpi/kpi.js';
@@ -72,7 +72,7 @@ Object.assign(window, {
   clearAllDefaultData, promoteToAdmin, revokeAdmin,
   generateRegCode, copyRegCode, revokeRegCode,
   suspendUser, unsuspendUser, openEditUserModal, selectUserEditColor, saveUserEdit,
-  openAssignModal, saveAssignedTask, deleteAssignedTask, toggleAssignedStatus,
+  openAssignModal, saveAssignedTask, deleteAssignedTask, toggleAssignedStatus, filterAssignedByEmployee,
   toggleEmpTasks,
   loadChatRoom, sendChatMsg, chatKeydown, autoResizeChatInput,
   openComments, sendComment, commentKeydown,
