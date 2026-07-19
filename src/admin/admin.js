@@ -6,6 +6,7 @@ import { toast, setSyncStatus } from '../ui/toast.js';
 import { timeAgo, createNotif } from '../notifications/notifications.js';
 import { startPresenceTracking } from '../presence/presence.js';
 import { openModal, closeModal } from '../ui/modal.js';
+import { renderChatRooms } from '../chat/chat.js';
 
 export function startAdminListener(){
   if(state.unsubAdminUsers){state.unsubAdminUsers();state.unsubAdminUsers=null;}
@@ -21,6 +22,16 @@ export function startAdminListener(){
     populateBroadcastSelect();
   },err=>console.warn('adminListener:',err));
   startRegCodesListener();
+}
+
+// Lightweight version for regular employees: just the user list, so they can see
+// colleagues and start private chats. Skips the admin-only stat cards / reg codes / etc.
+export function startUserDirectoryListener(){
+  if(state.unsubAdminUsers){state.unsubAdminUsers();state.unsubAdminUsers=null;}
+  state.unsubAdminUsers=db.collection('userProfiles').onSnapshot(snap=>{
+    state.allUserProfiles=snap.docs.map(d=>({...d.data(),uid:d.id}));
+    if(state.currentPage==='chat') renderChatRooms();
+  },err=>console.warn('userDirectory listener:',err));
 }
 
 /* ══ ADMIN PANEL RENDER ══ */
@@ -266,7 +277,7 @@ export async function checkAndLoadAdminRole(user){
     if(state.isAdmin && state.currentPage==='admin') renderAdminPanel();
   });
 
-  if(state.isAdmin) startAdminListener();
+  if(state.isAdmin) startAdminListener(); else startUserDirectoryListener();
   startPresenceTracking();
 }
 
