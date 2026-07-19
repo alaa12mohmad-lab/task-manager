@@ -57,6 +57,8 @@ export const state = {
   allAdmins: [],
   unsubRegCodes: null,
   regCodes: [],
+  editUserUid: null,
+  editUserColor: null,
 
   // assigned tasks
   unsubAssigned: null,

@@ -33,7 +33,8 @@ import {
   renderAdminUsers, addBroadcastTarget, removeBroadcastTarget, selectAllBroadcast,
   clearBroadcastTargets, sendBroadcast, quickNotifUser, adminSetWsRole,
   clearAllDefaultData, promoteToAdmin, revokeAdmin,
-  generateRegCode, copyRegCode, revokeRegCode
+  generateRegCode, copyRegCode, revokeRegCode,
+  suspendUser, unsuspendUser, openEditUserModal, selectUserEditColor, saveUserEdit
 } from './admin/admin.js';
 
 // ── Assigned tasks ──
@@ -70,6 +71,7 @@ Object.assign(window, {
   clearBroadcastTargets, sendBroadcast, quickNotifUser, adminSetWsRole,
   clearAllDefaultData, promoteToAdmin, revokeAdmin,
   generateRegCode, copyRegCode, revokeRegCode,
+  suspendUser, unsuspendUser, openEditUserModal, selectUserEditColor, saveUserEdit,
   openAssignModal, saveAssignedTask, deleteAssignedTask, toggleAssignedStatus,
   toggleEmpTasks,
   loadChatRoom, sendChatMsg, chatKeydown, autoResizeChatInput,

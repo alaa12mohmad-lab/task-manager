@@ -16,8 +16,18 @@ import { startHistoryListener } from '../history/history.js';
 // Wires Firebase auth state changes to the app's boot/teardown flow.
 // Call this once from main.js at startup.
 export function initAuth() {
-  auth.onAuthStateChanged(user => {
-    if (user) { state.currentUser = user; showApp(user); }
+  auth.onAuthStateChanged(async user => {
+    if (user) {
+      try {
+        const profileSnap = await db.collection('userProfiles').doc(user.uid).get();
+        if (profileSnap.exists && profileSnap.data().suspended) {
+          await auth.signOut();
+          showAuthErr('login-error', '🚫 هذا الحساب مُعلّق. تواصل مع الإدارة.');
+          return;
+        }
+      } catch (e) { /* لو فشلت القراءة لأي سبب، نكمل عادي بدل ما نقفل الجميع بره */ }
+      state.currentUser = user; showApp(user);
+    }
     else { state.currentUser = null; stopAllListeners(); showAuthScreen(); }
   });
 }

@@ -42,7 +42,7 @@ service cloud.firestore {
     // ═══ ملفات الحضور ═══
     match /userProfiles/{uid} {
       allow read: if isSignedIn();
-      allow write: if request.auth.uid == uid;
+      allow write: if request.auth.uid == uid || isAppAdmin();
     }
     match /userProfiles/{uid}/sessions/{sId} {
       allow read: if request.auth.uid == uid || isSuperAdmin();

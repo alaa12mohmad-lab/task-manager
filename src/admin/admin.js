@@ -5,6 +5,7 @@ import { COLORS, SUPER_ADMIN } from '../core/constants.js';
 import { toast, setSyncStatus } from '../ui/toast.js';
 import { timeAgo, createNotif } from '../notifications/notifications.js';
 import { startPresenceTracking } from '../presence/presence.js';
+import { openModal, closeModal } from '../ui/modal.js';
 
 export function startAdminListener(){
   if(state.unsubAdminUsers){state.unsubAdminUsers();state.unsubAdminUsers=null;}
@@ -54,13 +55,13 @@ export function renderAdminUsers(){
       return acc;
     },[]);
     const isMgr=state.allAdmins.includes(u.uid);
-    return`<div class="admin-user-row">
+    return`<div class="admin-user-row" style="${u.suspended?'opacity:.55':''}">
       <div class="admin-user-av" style="background:${color}">
         ${initials(u.displayName||u.email)}
         <div class="presence-dot ${u.isOnline?'online':'offline'}"></div>
       </div>
       <div class="admin-user-info">
-        <div class="admin-user-name">${esc(u.displayName||u.email)}${isMgr?' <span class="admin-crown" style="font-size:.7rem">🔑 مدير عمل</span>':''}</div>
+        <div class="admin-user-name">${esc(u.displayName||u.email)}${isMgr?' <span class="admin-crown" style="font-size:.7rem">🔑 مدير عمل</span>':''}${u.suspended?' <span style="color:var(--cancel);font-size:.7rem">🚫 معلّق</span>':''}</div>
         <div class="admin-user-email">${esc(u.email)}</div>
         <div class="admin-user-meta">
           <span>🔑 آخر دخول: ${loginTime}</span>
@@ -72,6 +73,11 @@ export function renderAdminUsers(){
         <span class="online-badge ${u.isOnline?'on':'off'}">${u.isOnline?'🟢 متصل':'⚫ غير متصل'}</span>
         ${u.isOnline?`<span style="font-size:.65rem;color:var(--muted)">${onlineAgo}</span>`:`<span style="font-size:.65rem;color:var(--muted)">${onlineAgo}</span>`}
         <button class="btn btn-ghost btn-sm" style="font-size:.72rem" onclick="quickNotifUser('${u.uid}','${esc(u.displayName||u.email)}')">🔔</button>
+        <button class="btn btn-ghost btn-sm" style="font-size:.7rem" onclick="openEditUserModal('${u.uid}')">✏️ تعديل</button>
+        ${u.suspended
+          ?`<button class="btn btn-ghost btn-sm" style="font-size:.7rem;color:var(--done)" onclick="unsuspendUser('${u.uid}','${esc(u.displayName||u.email)}')">إلغاء التعليق</button>`
+          :`<button class="btn btn-ghost btn-sm" style="font-size:.7rem;color:var(--cancel)" onclick="suspendUser('${u.uid}','${esc(u.displayName||u.email)}')">🚫 تعليق</button>`
+        }
         ${isSuperAdmin()?(isMgr
           ?`<button class="btn btn-ghost btn-sm" style="font-size:.7rem;color:var(--cancel)" onclick="revokeAdmin('${u.uid}','${esc(u.displayName||u.email)}')">إلغاء صلاحية مدير</button>`
           :`<button class="btn btn-ghost btn-sm" style="font-size:.7rem;color:var(--done)" onclick="promoteToAdmin('${u.uid}','${esc(u.displayName||u.email)}')">ترقية لمدير عمل</button>`
@@ -336,6 +342,56 @@ export async function revokeRegCode(code){
   if(!confirm('حذف هذا الكود؟'))return;
   try{await db.collection('regCodes').doc(code).delete();toast('تم حذف الكود','inf');}
   catch(e){toast('خطأ','err');}
+}
+
+/* ══ SUSPEND / UNSUSPEND USER ══ */
+// "Deleting" a registered user's account outright isn't possible from client-side code
+// (that requires the Firebase Admin SDK on a server). Suspension is the free, reversible
+// alternative: it blocks the account from ever logging back in without destroying any data.
+export async function suspendUser(targetUid,targetName){
+  if(!state.isAdmin){toast('غير مصرح','err');return;}
+  if(!confirm(`تعليق حساب "${targetName}"؟ لن يقدر يسجّل دخول تاني لحد ما تلغي التعليق.`))return;
+  try{
+    await db.collection('userProfiles').doc(targetUid).update({suspended:true,suspendedByUid:state.currentUser.uid,suspendedAt:Date.now()});
+    toast(`تم تعليق حساب ${targetName}`,'inf');
+  }catch(e){toast('خطأ: '+e.message,'err');}
+}
+export async function unsuspendUser(targetUid,targetName){
+  if(!state.isAdmin){toast('غير مصرح','err');return;}
+  try{
+    await db.collection('userProfiles').doc(targetUid).update({suspended:false});
+    toast(`تم إلغاء تعليق حساب ${targetName} ✓`,'ok');
+  }catch(e){toast('خطأ: '+e.message,'err');}
+}
+
+/* ══ EDIT USER PROFILE (name + color) ══ */
+export function openEditUserModal(uid){
+  if(!state.isAdmin){toast('غير مصرح','err');return;}
+  const u=state.allUserProfiles.find(x=>x.uid===uid);
+  if(!u)return;
+  state.editUserUid=uid;
+  state.editUserColor=u.color||COLORS[0];
+  document.getElementById('eu-name').value=u.displayName||'';
+  buildUserColorRow();
+  openModal('edit-user-overlay');
+}
+export function buildUserColorRow(){
+  const row=document.getElementById('eu-color-row');
+  if(!row)return;
+  row.innerHTML=COLORS.map(c=>`<div class="color-opt ${c===state.editUserColor?'selected':''}" style="background:${c}" onclick="selectUserEditColor('${c}')"></div>`).join('');
+}
+export function selectUserEditColor(c){
+  state.editUserColor=c;
+  buildUserColorRow();
+}
+export async function saveUserEdit(){
+  const name=document.getElementById('eu-name').value.trim();
+  if(!name){toast('يرجى إدخال اسم','err');return;}
+  try{
+    await db.collection('userProfiles').doc(state.editUserUid).update({displayName:name,color:state.editUserColor});
+    toast('تم تحديث بيانات المستخدم ✓','ok');
+    closeModal('edit-user-overlay');
+  }catch(e){toast('خطأ: '+e.message,'err');}
 }
 
 export function renderRegCodesList(){

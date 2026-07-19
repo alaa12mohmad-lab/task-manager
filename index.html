@@ -413,6 +413,18 @@
   </div>
 </div></div>
 
+<!-- ══ EDIT REGISTERED USER MODAL ══ -->
+<div class="overlay" id="edit-user-overlay" onclick="handleOvClick(event,'edit-user-overlay')">
+<div class="modal">
+  <div class="modal-title"><span>✏️</span><span>تعديل بيانات المستخدم</span></div>
+  <div class="fg"><label>الاسم المعروض *</label><input class="fi" id="eu-name" type="text"></div>
+  <div class="fg"><label>اللون المميز</label><div class="color-row" id="eu-color-row"></div></div>
+  <div class="modal-foot">
+    <button class="btn btn-ghost" onclick="closeModal('edit-user-overlay')">إلغاء</button>
+    <button class="btn btn-primary" onclick="saveUserEdit()">💾 حفظ</button>
+  </div>
+</div></div>
+
 <!-- ══ DETAIL MODAL ══ -->
 <div class="overlay" id="detail-overlay" onclick="handleOvClick(event,'detail-overlay')">
 <div class="modal"><div id="detail-body"></div><div class="modal-foot" id="detail-foot"></div></div>
