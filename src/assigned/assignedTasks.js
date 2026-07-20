@@ -7,6 +7,7 @@ import { openModal, closeModal } from '../ui/modal.js';
 import { createNotif } from '../notifications/notifications.js';
 import { openComments } from '../comments/comments.js';
 import { renderKpiPage } from '../kpi/kpi.js';
+import { renderDash } from '../personal/dashboard.js';
 import { logTaskCompletion } from '../history/history.js';
 
 export function startAssignedTasksListener(){
@@ -43,6 +44,7 @@ function updateAssignedBadgeAndRerender(){
   if(nb) nb.textContent = state.isAdmin ? state.assignedTasks.length : myPending;
   if(state.currentPage==='assigned') renderAssignedPage();
   if(state.currentPage==='kpi') renderKpiPage();
+  if(state.currentPage==='dash' && state.isAdmin) renderDash();
 }
 
 /* ══ OPEN/SAVE ASSIGNED TASK MODAL ══ */
