@@ -91,6 +91,7 @@
   </div>
   <div class="sidebar-nav">
     <div class="nav-section-label">الشخصية</div>
+    <div class="nav-item" id="nav-profile" onclick="goPage('profile')"><span class="nav-icon">👤</span> بروفايلي</div>
     <div class="nav-item active" id="nav-dash" onclick="goPage('dash')"><span class="nav-icon">📊</span> لوحة التحكم</div>
     <div class="nav-item" id="nav-tasks" onclick="goPage('tasks')"><span class="nav-icon">📋</span> مهامي<span class="nav-badge" id="nb-all">0</span></div>
     <div class="nav-item" id="nav-emps" onclick="goPage('emps')"><span class="nav-icon">👥</span> موظفوي<span class="nav-badge" id="nb-emps">0</span></div>
@@ -240,6 +241,11 @@
     <!-- TASK HISTORY PAGE -->
     <div class="page" id="page-history">
       <div id="history-page-content"></div>
+    </div>
+
+    <!-- MY PROFILE PAGE -->
+    <div class="page" id="page-profile">
+      <div id="profile-page-content"></div>
     </div>
 
     <!-- MESSAGING PAGE -->

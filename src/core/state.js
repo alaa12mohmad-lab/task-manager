@@ -59,6 +59,7 @@ export const state = {
   regCodes: [],
   editUserUid: null,
   editUserColor: null,
+  myProfileColor: null,
 
   // assigned tasks
   unsubAssigned: null,

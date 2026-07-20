@@ -37,6 +37,18 @@ export async function showApp(user){
   document.getElementById('su-name').textContent=user.displayName||'مستخدم';
   document.getElementById('su-role').innerHTML=isSuper?`<span class="admin-crown">👑 المدير الرئيسي</span>`:user.email;
   document.getElementById('su-av').textContent=initials(user.displayName||user.email);
+  // لو فيه اسم/لون مُعدَّل محفوظ في بروفايل Firestore (من صفحة "بروفايلي" أو تعديل المدير)، نعرضه بدل اسم التسجيل الأصلي
+  try{
+    const profileSnap=await db.collection('userProfiles').doc(user.uid).get();
+    if(profileSnap.exists){
+      const p=profileSnap.data();
+      if(p.displayName){
+        document.getElementById('su-name').textContent=p.displayName;
+        document.getElementById('su-av').textContent=initials(p.displayName);
+      }
+      if(p.color) document.getElementById('su-av').style.background=p.color;
+    }
+  }catch(e){/* لو فشلت القراءة، نكتفي باسم Auth الأصلي */}
   document.getElementById('auth-screen').style.display='none';
   document.getElementById('app').style.display='flex';
   setLoadText('جاري تحميل بياناتك...');

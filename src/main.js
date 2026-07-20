@@ -52,6 +52,9 @@ import { openComments, sendComment, commentKeydown } from './comments/comments.j
 // ── History ──
 import { filterHistoryByEmployee } from './history/history.js';
 
+// ── Profile ──
+import { saveMyProfile, selectMyProfileColor } from './profile/profile.js';
+
 // index.html still uses plain onclick="functionName(...)" attributes (unchanged from the
 // original single-file app), so every function those attributes reference has to exist on
 // window. This is the one place in the codebase where that global surface is assembled.
@@ -77,6 +80,7 @@ Object.assign(window, {
   loadChatRoom, sendChatMsg, chatKeydown, autoResizeChatInput,
   openComments, sendComment, commentKeydown,
   filterHistoryByEmployee,
+  saveMyProfile, selectMyProfileColor,
 });
 
 // ── Global keyboard shortcuts ──

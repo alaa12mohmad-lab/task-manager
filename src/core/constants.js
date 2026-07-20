@@ -9,9 +9,8 @@ export const pageTitles = {
   dash: 'لوحة التحكم', tasks: 'مهامي', emps: 'موظفوي', cal: 'التقويم',
   workspaces: 'المساحات المشتركة', 'ws-detail': '...', admin: '👑 لوحة المالك',
   assigned: '📌 المهام المُسندة', kpi: '📊 متابعة الموظفين', chat: '💬 المراسلة',
-  history: '📜 سجل الإنجاز'
+  history: '📜 سجل الإنجاز', profile: '👤 بروفايلي'
 };
-
 export const wsStatusLabels = { pending: 'معلّقة', wip: 'قيد التنفيذ', done: 'منتهية', cancelled: 'ملغية' };
 export const wsPriLabels = { high: 'عالية', medium: 'متوسطة', low: 'منخفضة' };
 export const wsPriWeight = { high: 0, medium: 1, low: 2 };
