@@ -34,6 +34,10 @@ service cloud.firestore {
     match /users/{userId}/{document=**} {
       allow read, write: if request.auth.uid == userId;
     }
+    // المدير يقدر يشوف (قراءة فقط) مهام أي موظف الشخصية للمتابعة — التعديل يفضل حصري لصاحب الحساب
+    match /users/{userId}/tasks/{taskId} {
+      allow read: if isAppAdmin();
+    }
     match /users/{userId}/notifications/{notifId} {
       allow read, update, delete: if request.auth.uid == userId;
       allow create: if isSignedIn();

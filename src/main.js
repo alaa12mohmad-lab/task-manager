@@ -16,7 +16,7 @@ import {
 
 // ── Personal: tasks / employees / calendar ──
 import { openTaskModal, saveTask, openTaskDetail, quickStatus, deleteTask, toggleStatus, renderTasks } from './personal/tasks.js';
-import { openEmpModal, selectColor, saveEmp, deleteEmp, empTaskFilter } from './personal/employees.js';
+import { openEmpModal, selectColor, saveEmp, deleteEmp } from './personal/employees.js';
 import { changeMonth, calClick } from './personal/calendar.js';
 
 // ── Workspaces ──
@@ -41,7 +41,7 @@ import {
 import { openAssignModal, saveAssignedTask, deleteAssignedTask, toggleAssignedStatus, filterAssignedByEmployee } from './assigned/assignedTasks.js';
 
 // ── KPI ──
-import { toggleEmpTasks } from './kpi/kpi.js';
+import { toggleEmpTasks, viewEmployeePersonalTasks } from './kpi/kpi.js';
 
 // ── Chat ──
 import { loadChatRoom, sendChatMsg, chatKeydown, autoResizeChatInput, closeChatRoom } from './chat/chat.js';
@@ -63,7 +63,7 @@ Object.assign(window, {
   toggleSidebar, closeSidebar, goPage, quickFilter, setFilter,
   doLogin, doRegister, doReset, doLogout, switchTab, showReset, hideReset, togglePw, checkStrength,
   openTaskModal, saveTask, openTaskDetail, quickStatus, deleteTask, toggleStatus, renderTasks,
-  openEmpModal, selectColor, saveEmp, deleteEmp, empTaskFilter,
+  openEmpModal, selectColor, saveEmp, deleteEmp,
   changeMonth, calClick,
   openCreateWsModal, createWorkspace, openWs, switchWsTab,
   openInviteModal, sendInvitation, acceptInvite, rejectInvite,
@@ -76,7 +76,7 @@ Object.assign(window, {
   generateRegCode, copyRegCode, revokeRegCode,
   suspendUser, unsuspendUser, openEditUserModal, selectUserEditColor, saveUserEdit,
   openAssignModal, saveAssignedTask, deleteAssignedTask, toggleAssignedStatus, filterAssignedByEmployee,
-  toggleEmpTasks,
+  toggleEmpTasks, viewEmployeePersonalTasks,
   loadChatRoom, sendChatMsg, chatKeydown, autoResizeChatInput, closeChatRoom,
   openComments, sendComment, commentKeydown,
   filterHistoryByEmployee,

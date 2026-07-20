@@ -1,3 +1,4 @@
+import { db } from '../core/firebase.js';
 import { state } from '../core/state.js';
 import { esc, initials, fmtDate, isOverdue } from '../core/utils.js';
 import { COLORS } from '../core/constants.js';
@@ -78,6 +79,7 @@ export function renderKpiPage(){
           </div>`;}).join('')
         :'<div style="text-align:center;padding:14px;font-size:.78rem;color:var(--muted)">لا توجد مهام مُسندة لهذا الموظف</div>'}
         <button class="btn btn-ghost btn-sm" style="width:100%;margin-top:6px" onclick="event.stopPropagation();openAssignModal()">+ إسناد مهمة جديدة</button>
+        <button class="btn btn-ghost btn-sm" style="width:100%;margin-top:6px" onclick="event.stopPropagation();viewEmployeePersonalTasks('${u.uid}','${esc(u.displayName||u.email)}')">👁 مهامه الشخصية</button>
       </div>
     </div>`).join('');
   }
@@ -87,6 +89,36 @@ export function renderKpiPage(){
 export function toggleEmpTasks(uid){
   const el = document.getElementById('emp-tasks-'+uid);
   if(el) el.style.display = el.style.display==='none'?'block':'none';
+}
+
+export async function viewEmployeePersonalTasks(empUid, empName){
+  const body = document.getElementById('emp-personal-tasks-body');
+  const title = document.getElementById('emp-personal-tasks-title');
+  if(!body) return;
+  title.textContent = `📋 مهام ${empName} الشخصية`;
+  body.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);font-size:.85rem">جاري التحميل...</div>';
+  document.getElementById('emp-personal-tasks-overlay').classList.add('open');
+  try{
+    const snap = await db.collection('users').doc(empUid).collection('tasks').orderBy('created','desc').get();
+    const tasks = snap.docs.map(d=>({...d.data(),id:d.id}));
+    if(!tasks.length){ body.innerHTML = '<div class="empty"><div class="ei">📭</div><p>لا توجد مهام شخصية لهذا الموظف</p></div>'; return; }
+    const sL={pending:'معلّقة',wip:'قيد التنفيذ',done:'منتهية',cancelled:'ملغية'};
+    body.innerHTML = tasks.map(t=>{
+      const dc=isOverdue(t)?'task-date overdue':'task-date';
+      const dl=t.due?`${isOverdue(t)?'⚠️ ':'📅 '}${fmtDate(t.due)}`:'';
+      return `<div style="background:var(--s2);border:1px solid var(--border);border-radius:9px;padding:10px 12px;margin-bottom:8px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+          <span class="badge b-${t.status}">${sL[t.status]}</span>
+          <span class="badge b-${t.priority}">${t.priority==='high'?'عالية':t.priority==='medium'?'متوسطة':'منخفضة'}</span>
+          ${dl?`<span class="${dc}" style="font-size:.7rem">${dl}</span>`:''}
+        </div>
+        <div style="font-weight:700;font-size:.85rem">${esc(t.title)}</div>
+        ${t.desc?`<div style="font-size:.75rem;color:var(--muted);margin-top:3px">${esc(t.desc)}</div>`:''}
+      </div>`;
+    }).join('');
+  }catch(e){
+    body.innerHTML = `<div class="empty"><div class="ei">🚫</div><p>تعذّر تحميل المهام</p><small>${esc(e.message)}</small></div>`;
+  }
 }
 
 /* ══ MESSAGING SYSTEM ══ */

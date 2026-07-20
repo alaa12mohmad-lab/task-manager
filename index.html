@@ -180,10 +180,9 @@
           <button class="pill p-cancel" data-f="overdue" onclick="setFilter('overdue')">⚠️ متأخرة</button>
         </div>
         <div class="filter-right">
-          <select class="fselect" id="filter-emp" onchange="renderTasks()"><option value="">كل الموظفين</option></select>
           <select class="fselect" id="sort-sel" onchange="renderTasks()">
             <option value="created">الأحدث</option><option value="due">الموعد</option>
-            <option value="priority">الأولوية</option><option value="emp">الموظف</option>
+            <option value="priority">الأولوية</option>
           </select>
         </div>
       </div>
@@ -392,7 +391,6 @@
   <div class="fg"><label>عنوان المهمة *</label><input class="fi" id="f-title" type="text" placeholder="أدخل عنوان المهمة..."></div>
   <div class="fg"><label>الوصف</label><textarea class="fta" id="f-desc" placeholder="تفاصيل إضافية..."></textarea></div>
   <div class="frow">
-    <div class="fg"><label>الموظف المسؤول</label><select class="fsel" id="f-emp"><option value="">— اختر موظفاً —</option></select></div>
     <div class="fg"><label>الفئة</label><input class="fi" id="f-cat" type="text" placeholder="مثال: عمل، مالية..."></div>
   </div>
   <div class="frow3">
@@ -435,6 +433,16 @@
   <div class="modal-foot">
     <button class="btn btn-ghost" onclick="closeModal('edit-user-overlay')">إلغاء</button>
     <button class="btn btn-primary" onclick="saveUserEdit()">💾 حفظ</button>
+  </div>
+</div></div>
+
+<!-- ══ EMPLOYEE PERSONAL TASKS (read-only, manager view) ══ -->
+<div class="overlay" id="emp-personal-tasks-overlay" onclick="handleOvClick(event,'emp-personal-tasks-overlay')">
+<div class="modal">
+  <div class="modal-title"><span>📋</span><span id="emp-personal-tasks-title">مهام الموظف الشخصية</span></div>
+  <div id="emp-personal-tasks-body" style="max-height:60dvh;overflow-y:auto"></div>
+  <div class="modal-foot">
+    <button class="btn btn-ghost" onclick="closeModal('emp-personal-tasks-overlay')">إغلاق</button>
   </div>
 </div></div>
 
