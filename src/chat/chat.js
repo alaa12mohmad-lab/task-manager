@@ -34,12 +34,18 @@ export function renderChatRooms(){
   if(!state.currentChatRoom) loadChatRoom('general');
 }
 
+export function closeChatRoom(){
+  document.getElementById('chat-layout')?.classList.remove('room-open');
+}
+
 export function loadChatRoom(roomId){
   state.currentChatRoom = roomId;
   const room = state.chatRooms.find(r=>r.id===roomId);
   // Update head
   const head = document.getElementById('chat-head');
-  if(head && room) head.innerHTML = `<div class="chat-room-av" style="background:${room.color};width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:700;color:#fff;flex-shrink:0">${room.icon||initials(room.name)}</div><div class="chat-head-name">${esc(room.name)}</div>`;
+  if(head && room) head.innerHTML = `<button class="chat-back-btn" onclick="closeChatRoom()">◀</button><div class="chat-room-av" style="background:${room.color};width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:700;color:#fff;flex-shrink:0">${room.icon||initials(room.name)}</div><div class="chat-head-name">${esc(room.name)}</div>`;
+  // على الموبايل: نظهر نافذة الرسائل بس ونخبي قائمة المحادثات (بدل ما يتزنقوا جنب بعض)
+  document.getElementById('chat-layout')?.classList.add('room-open');
   // Show input
   const inp = document.getElementById('chat-input-row');
   if(inp) inp.style.display='flex';

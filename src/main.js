@@ -44,7 +44,7 @@ import { openAssignModal, saveAssignedTask, deleteAssignedTask, toggleAssignedSt
 import { toggleEmpTasks } from './kpi/kpi.js';
 
 // ── Chat ──
-import { loadChatRoom, sendChatMsg, chatKeydown, autoResizeChatInput } from './chat/chat.js';
+import { loadChatRoom, sendChatMsg, chatKeydown, autoResizeChatInput, closeChatRoom } from './chat/chat.js';
 
 // ── Comments ──
 import { openComments, sendComment, commentKeydown } from './comments/comments.js';
@@ -77,7 +77,7 @@ Object.assign(window, {
   suspendUser, unsuspendUser, openEditUserModal, selectUserEditColor, saveUserEdit,
   openAssignModal, saveAssignedTask, deleteAssignedTask, toggleAssignedStatus, filterAssignedByEmployee,
   toggleEmpTasks,
-  loadChatRoom, sendChatMsg, chatKeydown, autoResizeChatInput,
+  loadChatRoom, sendChatMsg, chatKeydown, autoResizeChatInput, closeChatRoom,
   openComments, sendComment, commentKeydown,
   filterHistoryByEmployee,
   saveMyProfile, selectMyProfileColor,
