@@ -4,6 +4,7 @@ import { statusLabels } from '../core/constants.js';
 import { renderTasks } from './tasks.js';
 import { renderEmps } from './employees.js';
 import { renderCal } from './calendar.js';
+import { renderStepsModal } from '../steps/steps.js';
 
 const _today = new Date();
 
@@ -74,4 +75,4 @@ export function renderCounts(){
   document.getElementById('nb-assigned')?.textContent!==undefined && (document.getElementById('nb-assigned').textContent=state.isAdmin?state.assignedTasks.length:myAssigned);
 }
 
-export function renderAll(){renderCounts();if(state.currentPage==='dash')renderDash();if(state.currentPage==='tasks')renderTasks();if(state.currentPage==='emps')renderEmps();if(state.currentPage==='cal')renderCal();}
+export function renderAll(){renderCounts();if(state.currentPage==='dash')renderDash();if(state.currentPage==='tasks')renderTasks();if(state.currentPage==='emps')renderEmps();if(state.currentPage==='cal')renderCal();if(state.stepsCtx?.sourceType==='personal')renderStepsModal();}

@@ -446,6 +446,22 @@
   </div>
 </div></div>
 
+<!-- ══ TASK STEPS (checklist) ══ -->
+<div class="overlay" id="steps-overlay" onclick="handleOvClick(event,'steps-overlay')">
+<div class="modal">
+  <div class="modal-title"><span>☑️</span><span id="steps-modal-title">خطوات المهمة</span></div>
+  <div id="steps-list-body" style="max-height:45dvh;overflow-y:auto;margin-bottom:12px"></div>
+  <div class="fg" id="steps-add-row">
+    <div style="display:flex;gap:8px">
+      <input class="fi" id="step-input" type="text" placeholder="اكتب خطوة جديدة..." onkeydown="if(event.key==='Enter'){event.preventDefault();addStep();}">
+      <button class="btn btn-primary" onclick="addStep()" style="white-space:nowrap">+ إضافة</button>
+    </div>
+  </div>
+  <div class="modal-foot">
+    <button class="btn btn-ghost" onclick="closeModal('steps-overlay')">إغلاق</button>
+  </div>
+</div></div>
+
 <!-- ══ DETAIL MODAL ══ -->
 <div class="overlay" id="detail-overlay" onclick="handleOvClick(event,'detail-overlay')">
 <div class="modal"><div id="detail-body"></div><div class="modal-foot" id="detail-foot"></div></div>

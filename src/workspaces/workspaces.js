@@ -10,6 +10,7 @@ import { openComments } from '../comments/comments.js';
 import { openInviteModal } from './invitations.js';
 import { openWsTaskModal, toggleWsTaskStatus, deleteWsTask } from './wsTasks.js';
 import { changeMemberRole, removeMember } from './members.js';
+import { renderStepsModal } from '../steps/steps.js';
 
 export function startWsListeners(){
   // User's workspaces
@@ -100,6 +101,7 @@ function setupWsTasksListener(wsId){
     state.unsubWsTasks=db.collection('workspaces').doc(wsId).collection('tasks').orderBy('created','desc').onSnapshot(snap=>{
       state.wsTasks=snap.docs.map(d=>({...d.data(),id:d.id}));
       if(state.currentPage==='ws-detail')renderWsDetail();
+      if(state.stepsCtx?.sourceType==='workspace')renderStepsModal();
     });
   }else{
     let byAssigned={},byCreated={};
@@ -107,6 +109,7 @@ function setupWsTasksListener(wsId){
       const merged={...byAssigned,...byCreated};
       state.wsTasks=Object.values(merged).sort((a,b)=>b.created-a.created);
       if(state.currentPage==='ws-detail')renderWsDetail();
+      if(state.stepsCtx?.sourceType==='workspace')renderStepsModal();
     };
     const unsub1=db.collection('workspaces').doc(wsId).collection('tasks').where('assignedToUid','==',state.currentUser.uid).onSnapshot(snap=>{
       byAssigned={};snap.docs.forEach(d=>byAssigned[d.id]={...d.data(),id:d.id});
@@ -247,6 +250,9 @@ export function renderWsDetail(){
       const chip=assignee?`<span style="display:flex;align-items:center;gap:4px;font-size:.72rem;color:${assignee.color||'var(--accent)'};background:${(assignee.color||'#4f8ef7')}18;border:1px solid ${(assignee.color||'#4f8ef7')}40;border-radius:20px;padding:2px 8px 2px 4px"><span style="background:${assignee.color||'var(--accent)'};width:14px;height:14px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:.5rem;font-weight:700;color:#fff">${initials(assignee.displayName||assignee.email)}</span>${esc(assignee.displayName||assignee.email)}</span>`:'';
       // Can edit/delete: manager always, member only their status
       const canEditThis=canManage||(t.assignedToUid===state.currentUser.uid);
+      const stepsCount=(t.steps||[]).length;
+      const stepsDone=(t.steps||[]).filter(s=>s.done).length;
+      const stepsBadge=stepsCount?`<span class="task-cat" title="خطوات المهمة">☑️ ${stepsDone}/${stepsCount}</span>`:'';
       return`<div class="task-card" data-s="${t.status}">
         <div class="task-check" onclick="toggleWsTaskStatus('${t.id}')">${ck}</div>
         ${av}
@@ -257,10 +263,11 @@ export function renderWsDetail(){
             <span class="badge b-${t.status}">${wsStatusLabels[t.status]}</span>
             <span class="badge b-${t.priority}">${wsPriLabels[t.priority]}</span>
             ${chip}${dl?`<span class="${dc}">${dl}</span>`:''}
-            ${t.cat?`<span class="task-cat">🏷 ${esc(t.cat)}</span>`:''}
+            ${t.cat?`<span class="task-cat">🏷 ${esc(t.cat)}</span>`:''}${stepsBadge}
           </div>
         </div>
         <div class="task-actions">
+          <button class="icon-btn" title="خطوات المهمة" onclick="openStepsModal('workspace','${t.id}','${state.currentWs.id}','${esc(t.title).slice(0,40)}')">☑️</button>
           <button class="icon-btn" title="التعليقات" onclick="openComments('${t.id}','${state.currentWs.id}','${esc(t.title).slice(0,40)}')">💬</button>
           ${canManage?`<button class="icon-btn" onclick="openWsTaskModal('${t.id}')">✏️</button><button class="icon-btn del" onclick="deleteWsTask('${t.id}')">🗑</button>`:''}
         </div>

@@ -60,6 +60,7 @@ export const state = {
   editUserUid: null,
   editUserColor: null,
   myProfileColor: null,
+  stepsCtx: null,
 
   // assigned tasks
   unsubAssigned: null,

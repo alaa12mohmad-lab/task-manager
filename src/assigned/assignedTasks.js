@@ -8,7 +8,9 @@ import { createNotif } from '../notifications/notifications.js';
 import { openComments } from '../comments/comments.js';
 import { renderKpiPage } from '../kpi/kpi.js';
 import { renderDash } from '../personal/dashboard.js';
+import { renderStepsModal } from '../steps/steps.js';
 import { logTaskCompletion } from '../history/history.js';
+import { hasRequiredSteps, openStepsModal } from '../steps/steps.js';
 
 export function startAssignedTasksListener(){
   if(state.unsubAssigned){state.unsubAssigned();state.unsubAssigned=null;}
@@ -45,6 +47,7 @@ function updateAssignedBadgeAndRerender(){
   if(state.currentPage==='assigned') renderAssignedPage();
   if(state.currentPage==='kpi') renderKpiPage();
   if(state.currentPage==='dash' && state.isAdmin) renderDash();
+  if(state.stepsCtx?.sourceType==='assigned') renderStepsModal();
 }
 
 /* ══ OPEN/SAVE ASSIGNED TASK MODAL ══ */
@@ -92,6 +95,10 @@ export async function saveAssignedTask(){
   const notes    = document.getElementById('at-notes').value.trim();
   if(!title){toast('يرجى إدخال عنوان المهمة','err');return;}
   if(!empUid){toast('يرجى اختيار الموظف','err');return;}
+  if(status==='wip'){
+    const existing = state.editAssignedId ? state.assignedTasks.find(t=>t.id===state.editAssignedId) : null;
+    if(!hasRequiredSteps(existing||{})){toast('لازم تضيف خطوة واحدة على الأقل قبل نقل المهمة لـ "قيد التنفيذ" — افتح ☑️ خطوات المهمة','err');return;}
+  }
   const empProfile = state.allUserProfiles.find(u=>u.uid===empUid);
   const btn = document.getElementById('at-save-btn');
   btn.disabled=true; btn.textContent='⏳ جاري الإسناد...';
@@ -154,6 +161,11 @@ export async function toggleAssignedStatus(id){
   if(!state.isAdmin && t.assignedToUid!==state.currentUser.uid){toast('ليس لديك صلاحية','err');return;}
   const cycle={pending:'wip',wip:'done',done:'pending',cancelled:'pending'};
   const newStatus = cycle[t.status];
+  if(newStatus==='wip' && !hasRequiredSteps(t)){
+    toast('لازم تضيف خطوة واحدة على الأقل قبل نقل المهمة لـ "قيد التنفيذ"','err');
+    openStepsModal('assigned',id,null,t.title);
+    return;
+  }
   const statusAr={pending:'معلّقة',wip:'قيد التنفيذ',done:'منتهية',cancelled:'ملغية'};
   setSyncStatus('syncing');
   try{
@@ -249,6 +261,9 @@ export function renderAssignedCard(t,sL,pL,isManagerView){
   const dl=t.due?`${isOverdue(t)?'⚠️ ':'📅 '}${fmtDate(t.due)}`:'';
   const byProfile = state.allUserProfiles.find(u=>u.uid===t.assignedByUid);
   const byColor   = byProfile?.color||COLORS[1];
+  const stepsCount=(t.steps||[]).length;
+  const stepsDone=(t.steps||[]).filter(s=>s.done).length;
+  const stepsBadge=stepsCount?`<span style="font-size:.7rem;color:var(--muted)">☑️ ${stepsDone}/${stepsCount}</span>`:'';
   return `<div class="assigned-task-card" data-s="${t.status}">
     <div class="task-check" onclick="toggleAssignedStatus('${t.id}')" style="width:22px;height:22px;border-radius:7px;border:2px solid var(--border2);cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:.7rem;color:var(--text)">${ck}</div>
     <div style="flex:1;min-width:0">
@@ -258,12 +273,13 @@ export function renderAssignedCard(t,sL,pL,isManagerView){
         <span class="badge b-${t.status}">${sL[t.status]}</span>
         <span class="badge b-${t.priority}">${pL[t.priority]}</span>
         ${dl?`<span class="${dc}">${dl}</span>`:''}
-        ${t.cat?`<span style="font-size:.7rem;color:var(--muted)">🏷 ${esc(t.cat)}</span>`:''}
+        ${t.cat?`<span style="font-size:.7rem;color:var(--muted)">🏷 ${esc(t.cat)}</span>`:''}${stepsBadge}
         ${!isManagerView?`<span style="font-size:.68rem;color:${byColor}">من: ${esc(t.assignedByName)}</span>`:''}
       </div>
       ${t.notes?`<div style="font-size:.7rem;color:var(--accent);margin-top:3px">💡 ${esc(t.notes)}</div>`:''}
     </div>
     <div class="task-actions">
+      <button class="icon-btn" title="خطوات المهمة" onclick="openStepsModal('assigned','${t.id}',null,'${esc(t.title).slice(0,40)}')">☑️</button>
       <button class="icon-btn" title="تعليقات" onclick="openComments('${t.id}','__assigned__','${esc(t.title).slice(0,40)}')">💬</button>
       ${state.isAdmin?`<button class="icon-btn" onclick="openAssignModal('${t.id}')">✏️</button>
       <button class="icon-btn del" onclick="deleteAssignedTask('${t.id}')">🗑</button>`:''}

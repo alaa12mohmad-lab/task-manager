@@ -75,7 +75,7 @@ service cloud.firestore {
       allow create, delete: if isWsManager(wsId);
       allow update: if isWsManager(wsId)
         || (request.auth.uid == resource.data.assignedToUid
-            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']));
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'steps']));
     }
     match /workspaces/{wsId}/tasks/{taskId}/comments/{cId} {
       allow read, create: if isWsMember(wsId);
@@ -97,7 +97,7 @@ service cloud.firestore {
       allow create: if isAppAdmin();
       allow update: if isAppAdmin()
         || (request.auth.uid == resource.data.assignedToUid
-            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt']));
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt', 'steps']));
       allow delete: if isAppAdmin();
     }
     match /assignedTasks/{taskId}/comments/{cId} {

@@ -55,6 +55,9 @@ import { filterHistoryByEmployee } from './history/history.js';
 // ── Profile ──
 import { saveMyProfile, selectMyProfileColor } from './profile/profile.js';
 
+// ── Task Steps ──
+import { openStepsModal, addStep, toggleStep, deleteStep } from './steps/steps.js';
+
 // index.html still uses plain onclick="functionName(...)" attributes (unchanged from the
 // original single-file app), so every function those attributes reference has to exist on
 // window. This is the one place in the codebase where that global surface is assembled.
@@ -81,6 +84,7 @@ Object.assign(window, {
   openComments, sendComment, commentKeydown,
   filterHistoryByEmployee,
   saveMyProfile, selectMyProfileColor,
+  openStepsModal, addStep, toggleStep, deleteStep,
 });
 
 // ── Global keyboard shortcuts ──

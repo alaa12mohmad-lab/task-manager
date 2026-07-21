@@ -114,6 +114,10 @@ export async function viewEmployeePersonalTasks(empUid, empName){
         </div>
         <div style="font-weight:700;font-size:.85rem">${esc(t.title)}</div>
         ${t.desc?`<div style="font-size:.75rem;color:var(--muted);margin-top:3px">${esc(t.desc)}</div>`:''}
+        ${(t.steps||[]).length?`<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">
+          <div style="font-size:.68rem;color:var(--muted);margin-bottom:4px">☑️ ${(t.steps||[]).filter(s=>s.done).length}/${t.steps.length} خطوات</div>
+          ${t.steps.map(s=>`<div style="font-size:.75rem;padding:2px 0;${s.done?'text-decoration:line-through;color:var(--muted)':''}">${s.done?'✅':'⬜'} ${esc(s.text)}</div>`).join('')}
+        </div>`:''}
       </div>`;
     }).join('');
   }catch(e){

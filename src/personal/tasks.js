@@ -6,6 +6,7 @@ import { openModal, closeModal } from '../ui/modal.js';
 import { quickFilter } from '../ui/navigation.js';
 import { openComments } from '../comments/comments.js';
 import { logTaskCompletion } from '../history/history.js';
+import { hasRequiredSteps, openStepsModal } from '../steps/steps.js';
 
 export function openTaskModal(id = null, prefillDate = null) {
   state.editTaskId = id;
@@ -40,6 +41,10 @@ export async function saveTask() {
   const due = document.getElementById('f-due').value;
   const notes = document.getElementById('f-notes').value.trim();
   if (!title) { toast('يرجى إدخال عنوان المهمة', 'err'); return; }
+  if (status === 'wip') {
+    const existing = state.editTaskId ? state.tasks.find(t => t.id === state.editTaskId) : null;
+    if (!hasRequiredSteps(existing || {})) { toast('لازم تضيف خطوة واحدة على الأقل قبل ما تحوّل المهمة لـ "قيد التنفيذ" — افتح ☑️ خطوات المهمة', 'err'); return; }
+  }
   const btn = document.getElementById('save-task-btn');
   btn.disabled = true; btn.textContent = '⏳ جاري الحفظ...'; setSyncStatus('syncing');
   try {
@@ -79,6 +84,10 @@ export function openTaskDetail(id) {
 }
 
 export async function quickStatus(id, status) {
+  if (status === 'wip') {
+    const t = state.tasks.find(x => x.id === id);
+    if (!hasRequiredSteps(t || {})) { toast('لازم تضيف خطوة واحدة على الأقل قبل نقل المهمة لـ "قيد التنفيذ"', 'err'); openStepsModal('personal', id, null, t?.title || ''); return; }
+  }
   setSyncStatus('syncing');
   try {
     await col('tasks').doc(id).update({ status });
@@ -100,6 +109,11 @@ export async function toggleStatus(id) {
   const t = state.tasks.find(x => x.id === id);
   const cycle = { pending: 'wip', wip: 'done', done: 'pending', cancelled: 'pending' };
   const newStatus = cycle[t.status];
+  if (newStatus === 'wip' && !hasRequiredSteps(t)) {
+    toast('لازم تضيف خطوة واحدة على الأقل قبل نقل المهمة لـ "قيد التنفيذ"', 'err');
+    openStepsModal('personal', id, null, t.title);
+    return;
+  }
   setSyncStatus('syncing');
   try {
     await col('tasks').doc(id).update({ status: newStatus });
@@ -134,6 +148,9 @@ export function renderTasks() {
     const ck = t.status === 'done' ? '✓' : t.status === 'cancelled' ? '✕' : t.status === 'wip' ? '►' : '';
     const dc = isOverdue(t) ? 'task-date overdue' : 'task-date';
     const dl = t.due ? `${isOverdue(t) ? '⚠️ ' : '📅 '}${fmtDate(t.due)}` : '';
-    return `<div class="task-card" data-s="${t.status}"><div class="task-check" onclick="toggleStatus('${t.id}')">${ck}</div>${av}<div class="task-body"><div class="task-title">${esc(t.title)}</div>${t.desc ? `<div class="task-desc">${esc(t.desc)}</div>` : ''}<div class="task-meta"><span class="badge b-${t.status}">${statusLabels[t.status]}</span><span class="badge b-${t.priority}">${priLabels[t.priority]}</span>${dl ? `<span class="${dc}">${dl}</span>` : ''}${t.cat ? `<span class="task-cat">🏷 ${esc(t.cat)}</span>` : ''}</div></div><div class="task-actions"><button class="icon-btn" title="التعليقات" onclick="openComments('${t.id}',null,'${esc(t.title).slice(0, 40)}')">💬</button><button class="icon-btn" onclick="openTaskDetail('${t.id}')">👁</button><button class="icon-btn" onclick="openTaskModal('${t.id}')">✏️</button>${isSuperAdmin() ? `<button class="icon-btn del" onclick="deleteTask('${t.id}')">🗑</button>` : ''}</div></div>`;
+    const stepsCount = (t.steps||[]).length;
+    const stepsDone = (t.steps||[]).filter(s=>s.done).length;
+    const stepsBadge = stepsCount ? `<span class="task-cat" title="خطوات المهمة">☑️ ${stepsDone}/${stepsCount}</span>` : '';
+    return `<div class="task-card" data-s="${t.status}"><div class="task-check" onclick="toggleStatus('${t.id}')">${ck}</div>${av}<div class="task-body"><div class="task-title">${esc(t.title)}</div>${t.desc ? `<div class="task-desc">${esc(t.desc)}</div>` : ''}<div class="task-meta"><span class="badge b-${t.status}">${statusLabels[t.status]}</span><span class="badge b-${t.priority}">${priLabels[t.priority]}</span>${dl ? `<span class="${dc}">${dl}</span>` : ''}${t.cat ? `<span class="task-cat">🏷 ${esc(t.cat)}</span>` : ''}${stepsBadge}</div></div><div class="task-actions"><button class="icon-btn" title="خطوات المهمة" onclick="openStepsModal('personal','${t.id}',null,'${esc(t.title).slice(0, 40)}')">☑️</button><button class="icon-btn" title="التعليقات" onclick="openComments('${t.id}',null,'${esc(t.title).slice(0, 40)}')">💬</button><button class="icon-btn" onclick="openTaskDetail('${t.id}')">👁</button><button class="icon-btn" onclick="openTaskModal('${t.id}')">✏️</button>${isSuperAdmin() ? `<button class="icon-btn del" onclick="deleteTask('${t.id}')">🗑</button>` : ''}</div></div>`;
   }).join('');
 }

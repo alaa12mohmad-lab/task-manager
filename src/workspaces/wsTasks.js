@@ -5,6 +5,7 @@ import { toast, setSyncStatus } from '../ui/toast.js';
 import { openModal, closeModal } from '../ui/modal.js';
 import { createNotif } from '../notifications/notifications.js';
 import { logTaskCompletion } from '../history/history.js';
+import { hasRequiredSteps, openStepsModal } from '../steps/steps.js';
 
 export function openWsTaskModal(id=null){
   state.editWsTaskId=id;
@@ -43,6 +44,10 @@ export async function saveWsTask(){
   const due=document.getElementById('wt-due').value;
   const notes=document.getElementById('wt-notes').value.trim();
   if(!title){toast('يرجى إدخال عنوان المهمة','err');return;}
+  if(status==='wip'){
+    const existing = state.editWsTaskId ? state.wsTasks.find(t=>t.id===state.editWsTaskId) : null;
+    if(!hasRequiredSteps(existing||{})){toast('لازم تضيف خطوة واحدة على الأقل قبل نقل المهمة لـ "قيد التنفيذ" — افتح ☑️ خطوات المهمة','err');return;}
+  }
   const assignedMember=state.wsMembers.find(m=>m.uid===assignedToUid);
   const assignedToName=assignedMember?.displayName||assignedMember?.email||'';
   const btn=document.getElementById('wt-save-btn');
@@ -102,6 +107,11 @@ export async function toggleWsTaskStatus(id){
   const t=state.wsTasks.find(x=>x.id===id);
   const cycle={pending:'wip',wip:'done',done:'pending',cancelled:'pending'};
   const newStatus=cycle[t.status];
+  if(newStatus==='wip' && !hasRequiredSteps(t)){
+    toast('لازم تضيف خطوة واحدة على الأقل قبل نقل المهمة لـ "قيد التنفيذ"','err');
+    openStepsModal('workspace',id,state.currentWs.id,t.title);
+    return;
+  }
   const statusAr={pending:'معلّقة',wip:'قيد التنفيذ',done:'منتهية',cancelled:'ملغية'};
   setSyncStatus('syncing');
   try{
