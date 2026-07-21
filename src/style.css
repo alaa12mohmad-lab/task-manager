@@ -370,7 +370,7 @@ body{font-family:'Cairo',sans-serif;background:var(--bg);color:var(--text);displ
   .main{height:100dvh;padding-bottom:65px;}
   .hamburger{display:flex;}
   .bottom-nav{display:flex;}
-  .topbar{padding:10px 14px;gap:8px;}
+  .topbar{padding:10px 14px;padding-top:calc(10px + env(safe-area-inset-top));gap:8px;}
   .topbar-title{font-size:1.05rem;}
   .topbar-actions .search-wrap{display:none;}
   .topbar-actions .btn-ghost:not(.show-mobile){display:none;}
