@@ -49,11 +49,14 @@ export async function saveTask() {
   btn.disabled = true; btn.textContent = '⏳ جاري الحفظ...'; setSyncStatus('syncing');
   try {
     if (state.editTaskId) {
+      const prev = state.tasks.find(t => t.id === state.editTaskId);
       await col('tasks').doc(state.editTaskId).update({ title, desc, cat, status, priority, due, notes });
+      if (status === 'done' && prev && prev.status !== 'done') logTaskCompletion({ taskId: state.editTaskId, taskTitle: title, sourceType: 'personal' });
       toast('تم تحديث المهمة ✓', 'ok');
     } else {
       const id = uid();
       await col('tasks').doc(id).set({ id, title, desc, cat, status, priority, due, notes, created: Date.now() });
+      if (status === 'done') logTaskCompletion({ taskId: id, taskTitle: title, sourceType: 'personal' });
       toast('تمت إضافة المهمة ✓', 'ok');
     }
     closeModal('task-overlay');

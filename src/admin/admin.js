@@ -84,6 +84,7 @@ export function renderAdminUsers(){
         <span class="online-badge ${u.isOnline?'on':'off'}">${u.isOnline?'🟢 متصل':'⚫ غير متصل'}</span>
         ${u.isOnline?`<span style="font-size:.65rem;color:var(--muted)">${onlineAgo}</span>`:`<span style="font-size:.65rem;color:var(--muted)">${onlineAgo}</span>`}
         <button class="btn btn-ghost btn-sm" style="font-size:.72rem" onclick="quickNotifUser('${u.uid}','${esc(u.displayName||u.email)}')">🔔</button>
+        <button class="btn btn-ghost btn-sm" style="font-size:.72rem" onclick="viewEmployeePersonalTasks('${u.uid}','${esc(u.displayName||u.email)}')">📋 مهامه الشخصية</button>
         <button class="btn btn-ghost btn-sm" style="font-size:.7rem" onclick="openEditUserModal('${u.uid}')">✏️ تعديل</button>
         ${u.suspended
           ?`<button class="btn btn-ghost btn-sm" style="font-size:.7rem;color:var(--done)" onclick="unsuspendUser('${u.uid}','${esc(u.displayName||u.email)}')">إلغاء التعليق</button>`

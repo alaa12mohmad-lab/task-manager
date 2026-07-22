@@ -77,6 +77,13 @@ export async function saveWsTask(){
         });
       }
       toast('تم تحديث المهمة ✓','ok');
+      if(status==='done' && prevTask && prevTask.status!=='done' && assignedToUid){
+        logTaskCompletion({
+          taskId:state.editWsTaskId,taskTitle:title,sourceType:'workspace',
+          workspaceId:state.currentWs.id,workspaceName:state.currentWs.name,
+          employeeUid:assignedToUid,employeeName:assignedToName
+        });
+      }
     }else{
       const id=uid();
       await db.collection('workspaces').doc(state.currentWs.id).collection('tasks').doc(id).set({id,title,desc,assignedToUid,assignedToName,cat,status,priority,due,notes,createdByUid:state.currentUser.uid,createdByName:state.currentUser.displayName||state.currentUser.email,created:Date.now()});
@@ -90,6 +97,13 @@ export async function saveWsTask(){
         });
       }
       toast('تمت إضافة المهمة ✓','ok');
+      if(status==='done' && assignedToUid){
+        logTaskCompletion({
+          taskId:id,taskTitle:title,sourceType:'workspace',
+          workspaceId:state.currentWs.id,workspaceName:state.currentWs.name,
+          employeeUid:assignedToUid,employeeName:assignedToName
+        });
+      }
     }
     closeModal('ws-task-overlay');
   }catch(e){toast('خطأ في الحفظ','err');setSyncStatus('error');}

@@ -1,6 +1,7 @@
 import { db } from '../core/firebase.js';
 import { state } from '../core/state.js';
 import { esc, uid, fmtDate } from '../core/utils.js';
+import { toast } from '../ui/toast.js';
 
 // Called from the task-completion toggle points (personal tasks, workspace tasks, assigned
 // tasks) whenever a task's status transitions TO 'done'. Writes a standalone, immutable
@@ -19,7 +20,10 @@ export async function logTaskCompletion({ taskId, taskTitle, sourceType, workspa
       workspaceId, workspaceName,
       completedAt: Date.now()
     });
-  } catch (e) { console.warn('logTaskCompletion failed:', e); }
+  } catch (e) {
+    console.warn('logTaskCompletion failed:', e);
+    toast('تم تغيير حالة المهمة، لكن فشل تسجيلها في سجل الإنجاز: ' + (e.code || e.message || ''), 'err');
+  }
 }
 
 export function startHistoryListener() {
@@ -29,14 +33,21 @@ export function startHistoryListener() {
     state.unsubHistory = db.collection('taskHistory').orderBy('completedAt', 'desc').limit(300).onSnapshot(snap => {
       state.history = snap.docs.map(d => ({ ...d.data(), id: d.id }));
       if (state.currentPage === 'history') renderHistoryPage();
-    }, err => console.warn('history listener:', err));
+    }, err => { console.warn('history listener:', err); if (state.currentPage === 'history') renderHistoryError(err); });
   } else {
+    // مفيش orderBy هنا مع where عمداً — الاتنين مع بعض بيحتاجوا فهرس مركّب في Firestore،
+    // فبدل ما نعتمد عليه، بنرتّب النتائج يدوياً في الجافاسكريبت بعد الجلب
     state.unsubHistory = db.collection('taskHistory').where('employeeUid', '==', state.currentUser.uid)
-      .orderBy('completedAt', 'desc').limit(300).onSnapshot(snap => {
-        state.history = snap.docs.map(d => ({ ...d.data(), id: d.id }));
+      .limit(300).onSnapshot(snap => {
+        state.history = snap.docs.map(d => ({ ...d.data(), id: d.id })).sort((a, b) => b.completedAt - a.completedAt);
         if (state.currentPage === 'history') renderHistoryPage();
-      }, err => console.warn('history listener:', err));
+      }, err => { console.warn('history listener:', err); if (state.currentPage === 'history') renderHistoryError(err); });
   }
+}
+
+function renderHistoryError(err) {
+  const wrap = document.getElementById('history-page-content');
+  if (wrap) wrap.innerHTML = `<div class="empty"><div class="ei">🚫</div><p>تعذّر تحميل سجل الإنجاز</p><small>${err.code || err.message || ''}</small></div>`;
 }
 
 export function filterHistoryByEmployee(uid) {

@@ -119,6 +119,12 @@ export async function saveAssignedTask(){
           body:`"${title}"${due?' — الموعد: '+fmtDate(due):''}`,link:{}});
       }
       toast('تم تحديث المهمة ✓','ok');
+      if(status==='done' && prev && prev.status!=='done'){
+        logTaskCompletion({
+          taskId:state.editAssignedId,taskTitle:title,sourceType:'assigned',
+          employeeUid:empUid,employeeName:empProfile?.displayName||empProfile?.email||''
+        });
+      }
     } else {
       const id = uid();
       await db.collection('assignedTasks').doc(id).set({
@@ -135,6 +141,12 @@ export async function saveAssignedTask(){
         title:'📌 مهمة جديدة مُسندة إليك',
         body:`"${title}"${due?' — الموعد: '+fmtDate(due):''}`,link:{}});
       toast(`تم إسناد المهمة لـ ${empProfile?.displayName||empProfile?.email} ✓`,'ok');
+      if(status==='done'){
+        logTaskCompletion({
+          taskId:id,taskTitle:title,sourceType:'assigned',
+          employeeUid:empUid,employeeName:empProfile?.displayName||empProfile?.email||''
+        });
+      }
     }
     closeModal('assign-overlay');
     setSyncStatus('synced');
