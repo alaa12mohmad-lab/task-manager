@@ -46,7 +46,7 @@ function updateAssignedBadgeAndRerender(){
   if(nb) nb.textContent = state.isAdmin ? state.assignedTasks.length : myPending;
   if(state.currentPage==='assigned') renderAssignedPage();
   if(state.currentPage==='kpi') renderKpiPage();
-  if(state.currentPage==='dash' && state.isAdmin) renderDash();
+  if(state.currentPage==='dash') renderDash();
   if(state.stepsCtx?.sourceType==='assigned') renderStepsModal();
 }
 
